@@ -204,3 +204,185 @@ export interface CreateProductCategoryInput {
   name: string
   position?: number
 }
+
+// UI Component Types
+export interface NavigationRoute {
+  name: string
+  label: string
+  path: string
+  icon?: any
+  badge?: string | number
+  children?: NavigationRoute[]
+}
+
+export interface BreadcrumbItem {
+  label: string
+  path?: string
+  active?: boolean
+}
+
+export interface TableColumn {
+  key: string
+  label: string
+  sortable?: boolean
+  width?: string
+  align?: 'left' | 'center' | 'right'
+}
+
+export interface TableAction {
+  key: string
+  label: string
+  icon?: any
+  variant?: 'primary' | 'secondary' | 'danger'
+  disabled?: boolean
+}
+
+// Notification Types (from global store)
+export interface Notification {
+  id: string
+  type: 'success' | 'error' | 'warning' | 'info'
+  title: string
+  message?: string
+  duration?: number
+  persistent?: boolean
+}
+
+// Form Validation Types
+export interface ValidationRule {
+  required?: boolean
+  min?: number
+  max?: number
+  pattern?: RegExp
+  custom?: (value: any) => boolean | string
+}
+
+export interface FormField {
+  name: string
+  label: string
+  type: 'text' | 'email' | 'password' | 'number' | 'tel' | 'textarea' | 'select'
+  placeholder?: string
+  required?: boolean
+  validation?: ValidationRule[]
+  options?: Array<{ value: string; label: string }>
+}
+
+// Money and Currency Types
+export interface Money {
+  cents: number
+  currency: string
+  formatted: string
+}
+
+export interface PriceRange {
+  min: number
+  max: number
+}
+
+// Pagination Types
+export interface PaginationInfo {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
+// Search and Filter Types
+export interface SearchFilters {
+  query?: string
+  category?: string
+  status?: string
+  dateFrom?: string
+  dateTo?: string
+  priceRange?: PriceRange
+}
+
+export interface SortOption {
+  field: string
+  direction: 'asc' | 'desc'
+  label: string
+}
+
+// Modal and Dialog Types
+export interface ModalProps {
+  show: boolean
+  title?: string
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  persistent?: boolean
+  showClose?: boolean
+}
+
+export interface ConfirmDialogOptions {
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  variant?: 'danger' | 'warning' | 'info'
+}
+
+// Component Event Types
+export interface ComponentEvents {
+  'update:modelValue': [value: any]
+  'change': [value: any]
+  'click': [event: MouseEvent]
+  'submit': [data: any]
+  'cancel': []
+  'close': []
+}
+
+// Store State Types
+export interface CartState {
+  items: CartItem[]
+  customer: Customer | null
+  deliveryAddress: Address | null
+  paymentMethod: string
+  shippingMethod: string
+  isOnlineOrder: boolean
+  voucherCode: string
+  voucherDiscount: number
+}
+
+export interface AuthState {
+  user: User | null
+  token: string | null
+  isLoading: boolean
+}
+
+export interface GlobalState {
+  isLoading: boolean
+  loadingMessage: string
+  notifications: Notification[]
+  sidebarOpen: boolean
+  theme: 'light' | 'dark'
+}
+
+// Additional Utility Types
+export type Theme = 'light' | 'dark'
+export type LoadingState = 'idle' | 'loading' | 'success' | 'error'
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'warning'
+export type InputSize = 'sm' | 'md' | 'lg'
+export type ComponentSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+
+// Generic API Response Types
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: PaginationInfo
+  errors?: ApiError[]
+}
+
+export interface MutationResponse<T> {
+  data?: T
+  success: boolean
+  errors?: ApiError[]
+  message?: string
+}
+
+// Vue Router Meta Types
+export interface RouteMeta {
+  title?: string
+  requiresAuth?: boolean
+  roles?: string[]
+  layout?: string
+  breadcrumb?: BreadcrumbItem[]
+}
