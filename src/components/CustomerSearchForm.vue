@@ -319,6 +319,21 @@ function clearSelection() {
   selectedCustomer.value = null
 }
 
+// Expose method for parent components to clear the selection
+function clearCustomerSelection() {
+  selectedCustomer.value = null
+  emailSearch.value = ''
+  phoneSearch.value = ''
+  clearAllResults()
+  showCreateForm.value = false
+  resetForm()
+}
+
+// Expose the clear function to parent components
+defineExpose({
+  clearCustomerSelection
+})
+
 async function handleCreateCustomer() {
   if (!isFormValid.value) return
   

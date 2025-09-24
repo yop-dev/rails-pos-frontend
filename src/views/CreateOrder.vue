@@ -90,11 +90,21 @@
               <div class="bg-white rounded-lg border border-gray-200 p-4">
                 <div class="flex items-center justify-between">
                   <h3 class="text-lg font-semibold text-gray-900">Product Catalog</h3>
-                  <div class="flex items-center space-x-2">
+                  <div class="flex items-center space-x-4">
                     <!-- Cart Quick Summary -->
                     <div v-if="!cartStore.isEmpty" class="text-sm text-gray-600">
-                      {{ cartStore.totalItems }} items in cart
+                      {{ cartStore.totalItems }} items in cart • {{ formatPrice(cartStore.totalCents) }}
                     </div>
+                    
+                    <!-- Next Button -->
+                    <BaseButton
+                      v-if="!cartStore.isEmpty"
+                      @click="activeTab = 'customer'"
+                      size="sm"
+                      :right-icon="ChevronRightIcon"
+                    >
+                      Continue to Customer
+                    </BaseButton>
                   </div>
                 </div>
               </div>
@@ -110,12 +120,55 @@
           <!-- Customer Tab -->
           <div v-show="activeTab === 'customer'">
             <div class="space-y-6">
+              <!-- Customer Search Section -->
               <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Customer Information</h3>
                 <CustomerSearchForm 
+                  ref="customerSearchFormRef"
                   @customer-selected="handleCustomerSelected"
                   @customer-created="handleCustomerCreated"
                 />
+              </div>
+              
+              <!-- Selected Customer Display + Next Button -->
+              <div v-if="cartStore.customer" class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="text-lg font-semibold text-green-900 mb-3">✓ Customer Selected</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span class="font-medium text-green-700">Name:</span>
+                        <span class="ml-2 text-green-900">{{ cartStore.customer.fullName }}</span>
+                      </div>
+                      <div>
+                        <span class="font-medium text-green-700">Email:</span>
+                        <span class="ml-2 text-green-900">{{ cartStore.customer.email }}</span>
+                      </div>
+                      <div>
+                        <span class="font-medium text-green-700">Phone:</span>
+                        <span class="ml-2 text-green-900">{{ cartStore.customer.phone }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center space-x-3">
+                    <BaseButton
+                      @click="handleChangeCustomer"
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Change Customer
+                    </BaseButton>
+                    
+                    <BaseButton
+                      @click="activeTab = 'delivery'"
+                      size="sm"
+                      :right-icon="ChevronRightIcon"
+                    >
+                      Continue to Delivery
+                    </BaseButton>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -145,30 +198,140 @@
               
               <!-- No Delivery Needed Message -->
               <div v-if="!cartStore.isOnlineOrder || !hasPhysicalProducts" class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <div class="flex items-center">
-                  <InformationCircleIcon class="h-6 w-6 text-blue-500 mr-3" />
-                  <div>
-                    <h3 class="text-lg font-semibold text-blue-900">No Delivery Required</h3>
-                    <p class="text-blue-700 mt-1">
-                      {{ !cartStore.isOnlineOrder 
-                        ? 'This is an in-store order - customer will pick up items.'
-                        : 'Your cart contains only digital products - no shipping required.'
-                      }}
-                    </p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <InformationCircleIcon class="h-6 w-6 text-blue-500 mr-3" />
+                    <div>
+                      <h3 class="text-lg font-semibold text-blue-900">No Delivery Required</h3>
+                      <p class="text-blue-700 mt-1">
+                        {{ !cartStore.isOnlineOrder 
+                          ? 'This is an in-store order - customer will pick up items.'
+                          : 'Your cart contains only digital products - no shipping required.'
+                        }}
+                      </p>
+                    </div>
                   </div>
+                  
+                  <!-- Next Button for non-delivery orders -->
+                  <BaseButton
+                    @click="activeTab = 'payment'"
+                    size="sm"
+                    :right-icon="ChevronRightIcon"
+                  >
+                    Continue to Payment
+                  </BaseButton>
                 </div>
-                
               </div>
             </div>
           </div>
           
           <!-- Payment Tab -->
           <div v-show="activeTab === 'payment'">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-6">Payment Method</h3>
-              <PaymentMethodSelector 
-                @method-selected="handlePaymentMethodSelected"
-              />
+            <div class="space-y-6">
+              <!-- Payment Method Selection -->
+              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Payment Method</h3>
+                <PaymentMethodSelector 
+                  @method-selected="handlePaymentMethodSelected"
+                />
+              </div>
+              
+              <!-- Order Items Summary -->
+              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h4 class="text-lg font-semibold text-gray-900 mb-4">Order Items ({{ cartStore.totalItems }})</h4>
+                <div class="space-y-3">
+                  <div 
+                    v-for="item in cartStore.items" 
+                    :key="item.productId"
+                    class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900">{{ item.name }}</div>
+                      <div class="text-sm text-gray-600">{{ item.quantity }} x {{ formatPrice(item.priceCents) }}</div>
+                    </div>
+                    <div class="font-semibold text-gray-900">
+                      {{ formatPrice(item.priceCents * item.quantity) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Voucher Section -->
+              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h4 class="text-lg font-semibold text-gray-900 mb-4">Voucher Code</h4>
+                <div class="space-y-3">
+                  <div class="flex items-center space-x-3">
+                    <BaseInput
+                      v-model="voucherCode"
+                      placeholder="Enter voucher code"
+                      class="flex-1"
+                    />
+                    <BaseButton
+                      size="sm"
+                      @click="applyVoucher"
+                      :disabled="!voucherCode || voucherApplied"
+                      :loading="applyingVoucher"
+                    >
+                      Apply
+                    </BaseButton>
+                  </div>
+                  
+                  <div v-if="cartStore.voucherCode" class="flex items-center justify-between text-sm">
+                    <span class="text-green-600 font-medium">Voucher Applied: {{ cartStore.voucherCode }}</span>
+                    <button @click="removeVoucher" class="text-red-600 hover:text-red-800">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Payment Summary + Next Button -->
+              <div class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="text-lg font-semibold text-green-900 mb-3">Payment Summary</h4>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between text-sm">
+                        <span class="text-green-700">Subtotal:</span>
+                        <span class="font-medium text-green-900">{{ formatPrice(cartStore.subtotalCents) }}</span>
+                      </div>
+                      
+                      <div v-if="cartStore.shippingFeeCents > 0" class="flex items-center justify-between text-sm">
+                        <span class="text-green-700">Shipping Fee:</span>
+                        <span class="font-medium text-green-900">{{ formatPrice(cartStore.shippingFeeCents) }}</span>
+                      </div>
+                      
+                      <div v-if="cartStore.convenienceFeeCents > 0" class="flex items-center justify-between text-sm">
+                        <span class="text-green-700">Convenience Fee:</span>
+                        <span class="font-medium text-green-900">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
+                      </div>
+                      
+                      <div v-if="cartStore.voucherDiscount > 0" class="flex items-center justify-between text-sm text-green-600">
+                        <span>Voucher Discount:</span>
+                        <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
+                      </div>
+                      
+                      <div class="border-t border-green-300 pt-2 mt-3">
+                        <div class="flex items-center justify-between text-lg font-bold">
+                          <span class="text-green-900">Total:</span>
+                          <span class="text-green-600">{{ formatPrice(cartStore.totalCents) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Next Button -->
+                  <div v-if="cartStore.paymentMethod" class="ml-6">
+                    <BaseButton
+                      @click="activeTab = 'review'"
+                      size="lg"
+                      :right-icon="ChevronRightIcon"
+                    >
+                      Review Order
+                    </BaseButton>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -300,7 +463,7 @@
 
       <!-- Right Sidebar - Cart -->
       <div class="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-        <ShoppingCart :show-checkout-button="false" />
+        <ShoppingCart :show-checkout-button="false" :show-voucher="false" />
       </div>
     </div>
 
@@ -329,25 +492,153 @@
       <!-- Modal Content Area -->
       <div class="flex items-center justify-center min-h-screen p-4">
         <!-- Success Modal Content -->
-        <div v-if="successOrder" class="bg-white rounded-lg max-w-2xl w-full mx-4 p-6" @click.stop>
-          <!-- This will be the OrderSuccessModal content inline -->
-          <div class="text-center mb-6">
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+        <div v-if="successOrder" class="bg-white rounded-lg max-w-4xl w-full mx-4 p-0 max-h-[95vh] overflow-hidden flex flex-col" @click.stop>
+          <!-- Header -->
+          <div class="text-center px-6 py-4 bg-green-50 border-b border-green-200 flex-shrink-0">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-3">
               <CheckCircleIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
             </div>
             <h3 class="text-2xl font-bold text-gray-900 mb-2">Order Placed Successfully</h3>
             <p class="text-lg text-green-600 font-semibold">Order Reference Number: {{ successOrder.reference || 'N/A' }}</p>
           </div>
           
-          <div class="text-center">
+          <!-- Scrollable Content -->
+          <div class="overflow-y-auto flex-1 px-6 py-4">
+            <div class="space-y-6">
+              <!-- Customer Information -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <UserIcon class="w-5 h-5 mr-2 text-gray-600" />
+                  Customer Information
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="font-medium text-gray-700">Full Name:</span>
+                    <span class="ml-2 text-gray-900">{{ successOrder.customer?.fullName || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="font-medium text-gray-700">Email Address:</span>
+                    <span class="ml-2 text-gray-900">{{ successOrder.customer?.email || 'N/A' }}</span>
+                  </div>
+                  <div class="md:col-span-1">
+                    <span class="font-medium text-gray-700">Mobile Number:</span>
+                    <span class="ml-2 text-gray-900">{{ successOrder.customer?.phone || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Delivery Address (if applicable) -->
+              <div v-if="successOrder.deliveryAddress" class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <TruckIcon class="w-5 h-5 mr-2 text-gray-600" />
+                  Delivery Address
+                </h4>
+                <div class="text-sm text-gray-900">
+                  <div v-if="successOrder.deliveryAddress.unitFloorBuilding" class="mb-1">
+                    {{ successOrder.deliveryAddress.unitFloorBuilding }}
+                  </div>
+                  <div>
+                    {{ formatFullAddress(successOrder.deliveryAddress) }}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Shipping & Payment Methods -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <CreditCardIcon class="w-5 h-5 mr-2 text-gray-600" />
+                  Shipping & Payment
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="font-medium text-gray-700">Shipping Method:</span>
+                    <span class="ml-2 text-gray-900">
+                      {{ getShippingMethodDisplay(successOrder) }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="font-medium text-gray-700">Payment Method:</span>
+                    <span class="ml-2 text-gray-900">
+                      {{ getPaymentMethodDisplay(successOrder) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Order Items -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <CubeIcon class="w-5 h-5 mr-2 text-gray-600" />
+                  Order Items ({{ successOrder.items?.length || 0 }})
+                </h4>
+                <div class="space-y-2">
+                  <div 
+                    v-for="item in successOrder.items" 
+                    :key="item.id"
+                    class="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0"
+                  >
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900">{{ item.productName }}</div>
+                      <div class="text-sm text-gray-600">{{ item.quantity }} x {{ formatItemPrice(item.unitPriceCents) }}</div>
+                    </div>
+                    <div class="font-semibold text-gray-900">
+                      {{ formatItemPrice(item.totalPriceCents) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Order Summary -->
+              <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <ClipboardDocumentCheckIcon class="w-5 h-5 mr-2 text-green-600" />
+                  Order Summary
+                </h4>
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-700">Subtotal:</span>
+                    <span class="font-medium text-gray-900">{{ formatOrderPrice(successOrder.subtotalCents) }}</span>
+                  </div>
+                  
+                  <div v-if="shouldShowShippingFee(successOrder)" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-700">Shipping Fee:</span>
+                    <span class="font-medium text-gray-900">{{ formatOrderPrice(successOrder.shippingFeeCents) }}</span>
+                  </div>
+                  
+                  <div v-if="shouldShowConvenienceFee(successOrder)" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-700">Convenience Fee:</span>
+                    <span class="font-medium text-gray-900">{{ formatOrderPrice(successOrder.convenienceFeeCents) }}</span>
+                  </div>
+                  
+                  <div v-if="hasDiscount(successOrder)" class="flex items-center justify-between text-sm text-green-600">
+                    <span>Discount:</span>
+                    <span class="font-medium">-{{ formatOrderPrice(successOrder.discountCents) }}</span>
+                  </div>
+                  
+                  <div class="border-t border-green-300 pt-2 mt-3">
+                    <div class="flex items-center justify-between text-lg font-bold">
+                      <span class="text-gray-900">Grand Total:</span>
+                      <span class="text-green-600">{{ formatOrderPrice(successOrder.totalCents) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer Actions -->
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
-              <button @click="handleViewOrderFromModal(successOrder.id)" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+              <button @click="handleViewOrderFromModal(successOrder.id)" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center">
+                <ClipboardDocumentListIcon class="w-4 h-4 mr-2" />
                 View Order Details
               </button>
-              <button @click="handleCreateNewOrderFromModal" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors">
+              <button @click="handleCreateNewOrderFromModal" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center">
+                <PlusIcon class="w-4 h-4 mr-2" />
                 Create New Order
               </button>
-              <button @click="handleEmergencyClose" class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
+              <button @click="handleEmergencyClose" class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center">
+                <XMarkIcon class="w-4 h-4 mr-2" />
                 Close
               </button>
             </div>
@@ -389,12 +680,17 @@ import {
   ClipboardDocumentCheckIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  ClipboardDocumentListIcon,
+  PlusIcon,
+  XMarkIcon,
+  ChevronRightIcon
 } from '@heroicons/vue/24/outline'
 import { useCartStore } from '../stores/cart'
 import { useGlobalStore } from '../stores/global'
 import { formatPrice } from '../composables/useProducts'
 import BaseButton from '../components/BaseButton.vue'
+import BaseInput from '../components/BaseInput.vue'
 import ProductCatalog from '../components/ProductCatalog.vue'
 import ShoppingCart from '../components/ShoppingCart.vue'
 import CustomerSearchForm from '../components/CustomerSearchForm.vue'
@@ -419,10 +715,19 @@ const validationErrors = ref<string[]>([])
 const showSuccessModal = ref(false)
 const successOrder = ref<Order | null>(null)
 
+// Template refs
+const customerSearchFormRef = ref()
+
+// Voucher state
+const voucherCode = ref('')
+const applyingVoucher = ref(false)
+
 // Computed
 const hasPhysicalProducts = computed(() => 
   cartStore.items.some(item => item.productType === 'PHYSICAL')
 )
+
+const voucherApplied = computed(() => !!cartStore.voucherCode)
 
 const canPlaceOrder = computed(() => {
   validationErrors.value = []
@@ -521,16 +826,26 @@ function handleCustomerSelected(customer: Customer) {
   cartStore.setCustomer(customer)
   globalStore.showSuccess('Customer Selected', `Customer ${customer.fullName} has been selected`)
   
-  // Auto-advance to next tab
-  activeTab.value = 'delivery'
+  // Don't auto-advance anymore, let user use the Next button
 }
 
 function handleCustomerCreated(customer: Customer) {
   cartStore.setCustomer(customer)
   globalStore.showSuccess('Customer Created', `New customer ${customer.fullName} has been created`)
   
-  // Auto-advance to next tab
-  activeTab.value = 'delivery'
+  // Don't auto-advance anymore, let user use the Next button
+}
+
+function handleChangeCustomer() {
+  // Clear customer from cart store
+  cartStore.setCustomer(null)
+  
+  // Clear the customer search form's internal state
+  if (customerSearchFormRef.value) {
+    customerSearchFormRef.value.clearCustomerSelection()
+  }
+  
+  globalStore.showInfo('Customer Cleared', 'You can now search for a different customer')
 }
 
 
@@ -634,6 +949,161 @@ function formatDisplayAddress(address: Address | null): string {
   return parts.join(', ')
 }
 
+// Enhanced address formatter for success modal
+function formatFullAddress(address: any): string {
+  if (!address) return ''
+  
+  const parts = [
+    address.street,
+    address.barangay,
+    address.city,
+    address.province
+  ].filter(Boolean)
+  
+  return parts.join(', ')
+}
+
+// Get shipping method display text
+function getShippingMethodDisplay(order: any): string {
+  if (!order) return 'N/A'
+  
+  // Check if it's an in-store order
+  if (order.source === 'IN_STORE') {
+    return 'In-Store Pickup'
+  }
+  
+  // Use the shipping method label if available
+  if (order.shippingMethodLabel) {
+    return order.shippingMethodLabel
+  }
+  
+  // Fallback to mapping shipping method codes
+  const shippingMethods: Record<string, string> = {
+    'standard': 'Standard Delivery',
+    'express': 'Express Delivery', 
+    'same_day': 'Same Day Delivery',
+    'pickup': 'Store Pickup'
+  }
+  
+  // Try to extract from any shipping method info in the order
+  if (order.shippingMethod) {
+    return shippingMethods[order.shippingMethod] || order.shippingMethod
+  }
+  
+  return 'Standard Delivery'
+}
+
+// Get payment method display text
+function getPaymentMethodDisplay(order: any): string {
+  if (!order) return 'N/A'
+  
+  // Use the payment method label if available
+  if (order.paymentMethodLabel) {
+    return order.paymentMethodLabel
+  }
+  
+  // Fallback to mapping payment method codes
+  const paymentMethods: Record<string, string> = {
+    'cash': 'Cash on Delivery',
+    'card': 'Credit/Debit Card',
+    'gcash': 'GCash',
+    'paymaya': 'PayMaya',
+    'bank_transfer': 'Bank Transfer'
+  }
+  
+  // Try to extract from any payment method info in the order
+  if (order.paymentMethod) {
+    return paymentMethods[order.paymentMethod] || order.paymentMethod
+  }
+  
+  return 'Cash on Delivery'
+}
+
+// Determine if shipping fee should be shown
+function shouldShowShippingFee(order: any): boolean {
+  if (!order) return false
+  
+  // Don't show shipping fee for in-store orders
+  if (order.source === 'IN_STORE') {
+    return false
+  }
+  
+  // Show if there's a shipping fee amount (using cents field)
+  return order.shippingFeeCents > 0
+}
+
+// Determine if convenience fee should be shown  
+function shouldShowConvenienceFee(order: any): boolean {
+  if (!order) return false
+  return order.convenienceFeeCents > 0
+}
+
+// Format item prices (for individual order items)
+function formatItemPrice(priceObj: any): string {
+  // Handle direct cents value (most common case from GraphQL)
+  if (typeof priceObj === 'number') {
+    return `₱${(priceObj / 100).toFixed(2)}`
+  }
+  
+  // Handle object with formatted property
+  if (priceObj && priceObj.formatted) {
+    return priceObj.formatted
+  }
+  
+  // Handle object with cents property
+  if (priceObj && priceObj.cents !== undefined) {
+    return `₱${(priceObj.cents / 100).toFixed(2)}`
+  }
+  
+  return '₱0.00'
+}
+
+// Format order-level prices using the cents fields from GraphQL
+function formatOrderPrice(priceCents: number): string {
+  if (typeof priceCents === 'number' && priceCents >= 0) {
+    return `₱${(priceCents / 100).toFixed(2)}`
+  }
+  return '₱0.00'
+}
+
+// Check if order has discount
+function hasDiscount(order: any): boolean {
+  if (!order) return false
+  return order.discountCents > 0
+}
+
+// Voucher methods
+async function applyVoucher() {
+  if (!voucherCode.value) return
+  
+  applyingVoucher.value = true
+  
+  try {
+    // Simulate voucher validation (replace with actual API call)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // Mock voucher logic - simplified version
+    if (voucherCode.value.toUpperCase() === 'SAVE10') {
+      const discount = Math.floor(cartStore.subtotalCents * 0.1)
+      cartStore.applyVoucher(voucherCode.value, discount)
+      voucherCode.value = ''
+      globalStore.showSuccess('Voucher Applied', `Discount of ${formatPrice(discount)} has been applied`)
+    } else {
+      globalStore.showError('Invalid Voucher', 'Please check your voucher code and try again')
+    }
+  } catch (error) {
+    console.error('Error applying voucher:', error)
+    globalStore.showError('Error', 'Failed to apply voucher. Please try again.')
+  } finally {
+    applyingVoucher.value = false
+  }
+}
+
+function removeVoucher() {
+  cartStore.applyVoucher('', 0)
+  globalStore.showInfo('Voucher Removed', 'Voucher discount has been removed')
+}
+
 async function handlePlaceOrder() {
   if (!canPlaceOrder.value) {
     globalStore.showError('Validation Error', 'Please complete all required information before placing the order')
@@ -686,6 +1156,14 @@ async function handlePlaceOrder() {
     
     if (result.success && result.data) {
       console.log('Order created successfully:', result.data)
+      console.log('=== ORDER DATA STRUCTURE FOR MODAL ===')
+      console.log('Order object:', JSON.stringify(result.data, null, 2))
+      console.log('Items:', result.data.items)
+      console.log('Customer:', result.data.customer)
+      console.log('Subtotal:', result.data.subtotal)
+      console.log('Total:', result.data.total)
+      console.log('=======================================')
+      
       // Store the successful order data and show modal
       successOrder.value = result.data
       showSuccessModal.value = true

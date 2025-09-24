@@ -43,24 +43,12 @@
         {{ product.description }}
       </p>
       
-      <!-- Price and Actions -->
-      <div class="flex items-center justify-between">
-        <div class="flex flex-col">
-          <span class="text-lg font-semibold text-gray-900">
-            {{ product.price.formatted }}
-          </span>
-          <span class="text-xs text-gray-500">{{ product.price.currency }}</span>
-        </div>
-        
-        <!-- Add to Cart Button -->
-        <BaseButton
-          size="sm"
-          @click.stop="handleQuickAdd"
-          :loading="isAdding"
-          :left-icon="PlusIcon"
-        >
-          Add
-        </BaseButton>
+      <!-- Price -->
+      <div class="flex flex-col">
+        <span class="text-lg font-semibold text-gray-900">
+          {{ product.price.formatted }}
+        </span>
+        <span class="text-xs text-gray-500">{{ product.price.currency }}</span>
       </div>
     </div>
 
@@ -85,28 +73,6 @@
       </span>
     </div>
 
-    <!-- Hover Actions -->
-    <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-      <div class="flex space-x-2">
-        <!-- Quick View Button -->
-        <button
-          @click.stop="$emit('quick-view', product)"
-          class="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-          title="Quick view"
-        >
-          <EyeIcon class="h-4 w-4 text-gray-600" />
-        </button>
-        
-        <!-- Edit Button -->
-        <button
-          @click.stop="$emit('edit', product)"
-          class="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-          title="Edit product"
-        >
-          <PencilIcon class="h-4 w-4 text-gray-600" />
-        </button>
-      </div>
-    </div>
 
     <!-- Stock Status Indicator -->
     <div v-if="showStockStatus" class="absolute bottom-0 left-0 right-0">
@@ -123,10 +89,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { 
-  CubeIcon, 
-  PlusIcon, 
-  EyeIcon, 
-  PencilIcon 
+  CubeIcon
 } from '@heroicons/vue/24/outline'
 import BaseButton from './BaseButton.vue'
 import type { Product } from '../types'
@@ -142,8 +105,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   click: []
   'add-to-cart': [product: Product, quantity: number]
-  'quick-view': [product: Product]
-  edit: [product: Product]
 }>()
 
 // State

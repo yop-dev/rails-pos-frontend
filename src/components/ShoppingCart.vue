@@ -41,7 +41,7 @@
     </div>
 
     <!-- Voucher Section -->
-    <div v-if="!cartStore.isEmpty" class="flex-shrink-0 px-6 py-4 border-t border-gray-200">
+    <div v-if="!cartStore.isEmpty && props.showVoucher" class="flex-shrink-0 px-6 py-4 border-t border-gray-200">
       <div class="space-y-3">
         <div class="flex items-center space-x-3">
           <BaseInput
@@ -127,6 +127,7 @@ import CartItem from './CartItem.vue'
 // Props
 const props = defineProps<{
   showCheckoutButton?: boolean
+  showVoucher?: boolean
 }>()
 
 // Emits

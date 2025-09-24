@@ -325,18 +325,18 @@
     <!-- Product Detail Modal -->
     <div
       v-if="selectedProduct"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4"
     >
       <div
-        class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto"
+        class="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
-        <div class="relative">
+        <div class="flex-shrink-0 relative">
           <!-- Close Button -->
           <button
             @click="closeProductModal"
-            class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 z-10 bg-white rounded-full p-1 shadow-sm"
           >
-            <XMarkIcon class="h-6 w-6" />
+            <XMarkIcon class="h-5 w-5" />
           </button>
 
           <!-- Product Image -->
@@ -348,56 +348,56 @@
               class="w-full h-full object-cover"
             />
             <div v-else class="w-full h-full flex items-center justify-center">
-              <CubeIcon class="h-24 w-24 text-gray-400" />
+              <CubeIcon class="h-16 w-16 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Product Details -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <h2 class="text-xl font-bold text-gray-900 mb-2">
+            {{ selectedProduct.name }}
+          </h2>
+          <p class="text-2xl font-bold text-primary-600 mb-3">
+            {{ selectedProduct.price.formatted }}
+          </p>
+
+          <div v-if="selectedProduct.description" class="mb-4">
+            <h3 class="text-sm font-medium text-gray-900 mb-1">
+              Description
+            </h3>
+            <p class="text-sm text-gray-700">{{ selectedProduct.description }}</p>
+          </div>
+
+          <!-- Quantity Selector -->
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-medium text-gray-700">Quantity:</span>
+            <div class="flex items-center space-x-2">
+              <button
+                @click="modalQuantity = Math.max(1, modalQuantity - 1)"
+                class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+              >
+                <MinusIcon class="h-4 w-4" />
+              </button>
+              <span class="text-lg font-medium w-8 text-center">{{
+                modalQuantity
+              }}</span>
+              <button
+                @click="modalQuantity++"
+                class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+              >
+                <PlusIcon class="h-4 w-4" />
+              </button>
             </div>
           </div>
 
-          <!-- Product Details -->
-          <div class="p-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">
-              {{ selectedProduct.name }}
-            </h2>
-            <p class="text-3xl font-bold text-primary-600 mb-4">
-              {{ selectedProduct.price.formatted }}
-            </p>
-
-            <div v-if="selectedProduct.description" class="mb-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-2">
-                Description
-              </h3>
-              <p class="text-gray-700">{{ selectedProduct.description }}</p>
-            </div>
-
-            <!-- Quantity Selector -->
-            <div class="flex items-center space-x-4 mb-6">
-              <span class="text-sm font-medium text-gray-700">Quantity:</span>
-              <div class="flex items-center space-x-2">
-                <button
-                  @click="modalQuantity = Math.max(1, modalQuantity - 1)"
-                  class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                >
-                  <MinusIcon class="h-4 w-4" />
-                </button>
-                <span class="text-lg font-medium w-8 text-center">{{
-                  modalQuantity
-                }}</span>
-                <button
-                  @click="modalQuantity++"
-                  class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                >
-                  <PlusIcon class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <!-- Add to Cart Button -->
-            <BaseButton @click="addToCartFromModal" class="w-full" size="lg">
-              <PlusIcon class="h-5 w-5 mr-2" />
-              Add to Cart (₱{{
-                formatPrice(selectedProduct.priceCents * modalQuantity)
-              }})
-            </BaseButton>
-          </div>
+          <!-- Add to Cart Button -->
+          <BaseButton @click="addToCartFromModal" class="w-full" size="lg">
+            <PlusIcon class="h-5 w-5 mr-2" />
+            Add to Cart (₱{{
+              formatPrice(selectedProduct.priceCents * modalQuantity)
+            }})
+          </BaseButton>
         </div>
       </div>
     </div>
