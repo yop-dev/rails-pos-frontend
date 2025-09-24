@@ -316,11 +316,38 @@ async function handleSubmit() {
     emit('address-updated', address)
     globalStore.showSuccess('Address Saved', 'Delivery address has been updated')
     
+    // Scroll to shipping method section
+    setTimeout(() => {
+      scrollToShippingSection()
+    }, 100)
+    
   } catch (error) {
     console.error('Error saving address:', error)
     globalStore.showError('Error', 'Failed to save address. Please try again.')
   } finally {
     isSubmitting.value = false
+  }
+}
+
+// Function to scroll to shipping method section
+function scrollToShippingSection() {
+  // Look for shipping method section by text content
+  const headings = Array.from(document.querySelectorAll('h3'))
+  const shippingSection = headings.find(h => h.textContent?.includes('Shipping Method'))
+  
+  if (shippingSection) {
+    // Scroll to the shipping section
+    shippingSection.closest('.bg-white')?.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start',
+      inline: 'nearest'
+    })
+  } else {
+    // Fallback: scroll down by a reasonable amount to reveal next section
+    window.scrollBy({ 
+      top: 500, 
+      behavior: 'smooth' 
+    })
   }
 }
 

@@ -75,6 +75,16 @@
           </div>
         </div>
       </div>
+      
+      <!-- Continue to Payment Button -->
+      <div class="mt-4 flex justify-center">
+        <button
+          @click="handleManualNavigateToPayment"
+          class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        >
+          Continue to Payment
+        </button>
+      </div>
     </div>
     
     <!-- Delivery Address Info -->
@@ -110,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { 
   TruckIcon, 
   ClockIcon, 
@@ -129,10 +139,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'method-selected': [methodCode: string, methodLabel: string, feeCents: number]
+  'navigate-to-payment': []
 }>()
 
 // State
 const selectedMethod = ref('')
+const autoNavigationTimeout = ref<number | null>(null)
 
 // Composables
 const cartStore = useCartStore()
@@ -227,6 +239,16 @@ function formatAddressDisplay(address: Address | null): string {
   return parts.join(', ')
 }
 
+function handleManualNavigateToPayment() {
+  // Cancel auto-navigation if it's pending
+  if (autoNavigationTimeout.value) {
+    clearTimeout(autoNavigationTimeout.value)
+    autoNavigationTimeout.value = null
+  }
+  
+  emit('navigate-to-payment')
+}
+
 function handleMethodChange() {
   const method = selectedMethodDetails.value
   if (method) {
@@ -240,6 +262,12 @@ function handleMethodChange() {
       'Shipping Method Selected', 
       `${method.label} selected (${method.feeCents === 0 ? 'Free' : formatPrice(method.feeCents)})`
     )
+    
+    // Auto-navigate to payment after a longer delay (user can also click the button)
+    autoNavigationTimeout.value = setTimeout(() => {
+      emit('navigate-to-payment')
+      autoNavigationTimeout.value = null
+    }, 3000) // Wait 3 seconds to let user see the selection and choose to continue manually
   }
 }
 
@@ -248,4 +276,11 @@ if (availableShippingMethods.value.length === 1) {
   selectedMethod.value = availableShippingMethods.value[0].code
   handleMethodChange()
 }
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (autoNavigationTimeout.value) {
+    clearTimeout(autoNavigationTimeout.value)
+  }
+})
 </script>

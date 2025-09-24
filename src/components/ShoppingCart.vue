@@ -101,7 +101,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <div v-if="!cartStore.isEmpty" class="flex-shrink-0 px-6 py-4 space-y-3">
+    <div v-if="!cartStore.isEmpty && props.showCheckoutButton" class="flex-shrink-0 px-6 py-4 space-y-3">
       <BaseButton
         class="w-full"
         @click="$emit('continue-checkout')"
@@ -123,6 +123,11 @@ import { formatPrice } from '../composables/useProducts'
 import BaseButton from './BaseButton.vue'
 import BaseInput from './BaseInput.vue'
 import CartItem from './CartItem.vue'
+
+// Props
+const props = defineProps<{
+  showCheckoutButton?: boolean
+}>()
 
 // Emits
 const emit = defineEmits<{

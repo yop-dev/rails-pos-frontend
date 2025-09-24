@@ -52,24 +52,6 @@ const SEARCH_CUSTOMERS_BY_PHONE = gql`
   }
 `
 
-const CREATE_CUSTOMER = gql`
-  mutation CreateCustomer($input: CustomerInput!) {
-    createCustomer(input: $input) {
-      customer {
-        id
-        firstName
-        lastName
-        email
-        phone
-        fullName
-      }
-      errors {
-        message
-        field
-      }
-    }
-  }
-`
 
 // Test query to get all customers - for debugging
 const GET_ALL_CUSTOMERS = gql`
@@ -169,43 +151,102 @@ export function useCustomerSearch() {
   }
 }
 
+// GraphQL Mutation for Customer Creation
+const CREATE_CUSTOMER = gql`
+  mutation CreateCustomer($firstName: String!, $lastName: String!, $email: String!, $phone: String) {
+    createCustomer(firstName: $firstName, lastName: $lastName, email: $email, phone: $phone) {
+      customer {
+        id
+        firstName
+        lastName
+        email
+        phone
+        fullName
+        lastCheckoutAddress {
+          id
+          street
+          unitFloorBuilding
+          barangay
+          city
+          province
+          postalCode
+          landmark
+          remarks
+        }
+      }
+      errors {
+        message
+        path
+      }
+    }
+  }
+`
+
 // Customer Creation Composable
 export function useCreateCustomer() {
-  const { mutate: createCustomerMutation, loading } = useMutation(CREATE_CUSTOMER)
+  const { mutate: createCustomerMutation, loading, error } = useMutation(CREATE_CUSTOMER)
   
   const createCustomer = async (customerData: CustomerForm): Promise<MutationResponse<Customer>> => {
     try {
       const result = await createCustomerMutation({
-        input: customerData
+        firstName: customerData.firstName.trim(),
+        lastName: customerData.lastName.trim(),
+        email: customerData.email.trim().toLowerCase(),
+        phone: customerData.phone?.trim() || null
       })
       
-      if (result?.data?.createCustomer?.errors?.length > 0) {
+      const { customer, errors: gqlErrors } = result?.data?.createCustomer || {}
+      
+      if (gqlErrors && gqlErrors.length > 0) {
+        const errors = gqlErrors.map((err: any) => ({
+          field: err.path?.[0] || 'general',
+          message: err.message
+        }))
+        
         return {
           success: false,
-          errors: result.data.createCustomer.errors,
-          message: 'Customer creation failed with validation errors'
+          errors,
+          message: 'Please correct the errors and try again'
         }
       }
       
-      if (result?.data?.createCustomer?.customer) {
+      if (customer) {
         return {
           success: true,
-          data: result.data.createCustomer.customer,
+          data: customer,
           message: 'Customer created successfully'
         }
       }
       
       return {
         success: false,
-        errors: [{ message: 'Unknown error occurred during customer creation' }],
-        message: 'Customer creation failed'
+        errors: [{ message: 'Unknown error occurred' }],
+        message: 'Failed to create customer'
       }
       
-    } catch (error) {
-      console.error('Error creating customer:', error)
+    } catch (err) {
+      console.error('Error creating customer:', err)
+      
+      // Handle GraphQL errors
+      if (err && typeof err === 'object' && 'graphQLErrors' in err) {
+        const graphQLErrors = (err as any).graphQLErrors
+        if (graphQLErrors && graphQLErrors.length > 0) {
+          const errors = graphQLErrors.map((error: any) => ({
+            field: 'general',
+            message: error.message
+          }))
+          
+          return {
+            success: false,
+            errors,
+            message: 'Failed to create customer'
+          }
+        }
+      }
+      
       return {
         success: false,
-        errors: [{ message: 'Network error or server unavailable' }],
+        errors: [{ message: 'An unexpected error occurred' }],
         message: 'Failed to create customer'
       }
     }

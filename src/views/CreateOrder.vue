@@ -95,13 +95,6 @@
                     <div v-if="!cartStore.isEmpty" class="text-sm text-gray-600">
                       {{ cartStore.totalItems }} items in cart
                     </div>
-                    <BaseButton 
-                      v-if="!cartStore.isEmpty"
-                      @click="activeTab = 'customer'" 
-                      size="sm"
-                    >
-                      Continue to Customer
-                    </BaseButton>
                   </div>
                 </div>
               </div>
@@ -146,6 +139,7 @@
                 <ShippingMethodSelector 
                   :delivery-address="cartStore.deliveryAddress"
                   @method-selected="handleShippingMethodSelected"
+                  @navigate-to-payment="handleNavigateToPayment"
                 />
               </div>
               
@@ -164,12 +158,6 @@
                   </div>
                 </div>
                 
-                <!-- Continue Button -->
-                <div class="mt-4">
-                  <BaseButton @click="activeTab = 'payment'">
-                    Continue to Payment
-                  </BaseButton>
-                </div>
               </div>
             </div>
           </div>
@@ -296,9 +284,7 @@
 
       <!-- Right Sidebar - Cart -->
       <div class="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-        <ShoppingCart 
-          @continue-checkout="handleContinueCheckout"
-        />
+        <ShoppingCart :show-checkout-button="false" />
       </div>
     </div>
 
@@ -309,12 +295,75 @@
       @close="selectedProduct = null"
       @add-to-cart="handleAddToCart"
     />
+    
+    
+    <!-- Always visible emergency close for grey screen -->
+    <div v-if="showSuccessModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 z-50" @click="handleEmergencyClose">
+      <!-- Emergency Close Button (always visible) -->
+      <button 
+        @click="handleEmergencyClose" 
+        class="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-800 w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-[60] transition-colors"
+        title="Close"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+      
+      <!-- Modal Content Area -->
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- Success Modal Content -->
+        <div v-if="successOrder" class="bg-white rounded-lg max-w-2xl w-full mx-4 p-6" @click.stop>
+          <!-- This will be the OrderSuccessModal content inline -->
+          <div class="text-center mb-6">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <CheckCircleIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Order Placed Successfully</h3>
+            <p class="text-lg text-green-600 font-semibold">Order Reference Number: {{ successOrder.reference || 'N/A' }}</p>
+          </div>
+          
+          <div class="text-center">
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+              <button @click="handleViewOrderFromModal(successOrder.id)" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                View Order Details
+              </button>
+              <button @click="handleCreateNewOrderFromModal" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors">
+                Create New Order
+              </button>
+              <button @click="handleEmergencyClose" class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Fallback Modal (when no order data) -->
+        <div v-else class="bg-white rounded-lg max-w-md w-full mx-4 p-6" @click.stop>
+          <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <CheckCircleIcon class="h-6 w-6 text-green-600" aria-hidden="true" />
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Order Placed Successfully!</h3>
+            <p class="text-gray-600 mb-6">Your order has been created successfully.</p>
+            <div class="flex flex-col gap-3">
+              <button @click="router.push({ name: 'OrderManager' })" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                View Orders
+              </button>
+              <button @click="handleEmergencyClose" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors">
+                Create New Order
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { 
   ArrowLeftIcon, 
   CubeIcon, 
@@ -337,11 +386,12 @@ import ProductDetailModal from '../components/ProductDetailModal.vue'
 import DeliveryAddressForm from '../components/DeliveryAddressForm.vue'
 import ShippingMethodSelector from '../components/ShippingMethodSelector.vue'
 import PaymentMethodSelector from '../components/PaymentMethodSelector.vue'
-import type { Product, Customer, Address, CreateOrderInput } from '../types'
+import type { Product, Customer, Address, CreateOrderInput, Order } from '../types'
 import useOrderCreation from '../composables/useCreateOrder'
 
 // Composables
 const router = useRouter()
+const route = useRoute()
 const cartStore = useCartStore()
 const globalStore = useGlobalStore()
 const { createOrder, loading: placingOrder } = useOrderCreation()
@@ -350,6 +400,8 @@ const { createOrder, loading: placingOrder } = useOrderCreation()
 const activeTab = ref('products')
 const selectedProduct = ref<Product | null>(null)
 const validationErrors = ref<string[]>([])
+const showSuccessModal = ref(false)
+const successOrder = ref<Order | null>(null)
 
 // Computed
 const hasPhysicalProducts = computed(() => 
@@ -465,17 +517,12 @@ function handleCustomerCreated(customer: Customer) {
   activeTab.value = 'delivery'
 }
 
-function handleContinueCheckout() {
-  if (!cartStore.customer) {
-    activeTab.value = 'customer'
-  } else {
-    activeTab.value = 'delivery'
-  }
-}
 
 function handleAddressUpdated(address: Address) {
   cartStore.setDeliveryAddress(address)
   globalStore.showSuccess('Address Updated', 'Delivery address has been saved')
+  
+  // Scroll is handled by DeliveryAddressForm component
 }
 
 function handleAddressCleared() {
@@ -487,6 +534,67 @@ function handleShippingMethodSelected(methodCode: string, methodLabel: string, f
   cartStore.setShippingMethod(methodCode)
   // The shipping fee will be automatically calculated by the cart store
   // based on the selected method and order type
+}
+
+function handleNavigateToPayment() {
+  activeTab.value = 'payment'
+  globalStore.showInfo('Continue to Payment', 'Proceed to select your payment method')
+}
+
+function getShippingMethodLabel(): string {
+  // Map shipping method codes to labels
+  const shippingMethods: Record<string, string> = {
+    'standard': 'Standard Delivery',
+    'express': 'Express Delivery',
+    'same_day': 'Same Day Delivery',
+    'pickup': 'Store Pickup'
+  }
+  
+  return shippingMethods[cartStore.shippingMethod] || 'Unknown Shipping Method'
+}
+
+function getPaymentMethodLabel(): string {
+  // Map payment method codes to labels
+  const paymentMethods: Record<string, string> = {
+    'cash': 'Cash on Delivery',
+    'card': 'Credit/Debit Card',
+    'gcash': 'GCash',
+    'paymaya': 'PayMaya',
+    'bank_transfer': 'Bank Transfer'
+  }
+  
+  return paymentMethods[cartStore.paymentMethod] || 'Unknown Payment Method'
+}
+
+function handleCloseSuccessModal() {
+  showSuccessModal.value = false
+  successOrder.value = null
+  // Redirect to order manager
+  router.push({ name: 'OrderManager' })
+}
+
+function handleViewOrderFromModal(orderId: string) {
+  showSuccessModal.value = false
+  successOrder.value = null
+  // Redirect to order detail page
+  router.push({ name: 'OrderDetail', params: { id: orderId } })
+}
+
+function handleCreateNewOrderFromModal() {
+  showSuccessModal.value = false
+  successOrder.value = null
+  // Reset to products tab to start a new order
+  activeTab.value = 'products'
+  cartStore.clearCart()
+  globalStore.showInfo('New Order', 'Ready to create a new order!')
+}
+
+function handleEmergencyClose() {
+  console.log('Emergency close triggered')
+  showSuccessModal.value = false
+  successOrder.value = null
+  // Default action: go back to order manager
+  router.push({ name: 'OrderManager' })
 }
 
 function handlePaymentMethodSelected(methodCode: string, methodLabel: string, convenienceFeeCents: number) {
@@ -542,15 +650,27 @@ async function handlePlaceOrder() {
     
     const result = await createOrder(orderInput)
     
+    console.log('Order creation result:', result)
+    
     if (result.success && result.data) {
-      globalStore.showSuccess(
-        'Order Placed Successfully!', 
-        `Your order ${result.data.reference} has been created`
-      )
+      console.log('Order created successfully:', result.data)
+      // Store the successful order data and show modal
+      successOrder.value = result.data
+      showSuccessModal.value = true
+      console.log('Modal state set - showSuccessModal:', showSuccessModal.value, 'successOrder:', successOrder.value)
       
-      // Clear cart and redirect
+      // Clear cart (but don't redirect yet, let modal handle it)
       cartStore.clearCart()
-      router.push({ name: 'OrderManager' })
+      
+      // Add a timeout to ensure modal renders, if not, fallback to old behavior
+      setTimeout(() => {
+        if (showSuccessModal.value && !successOrder.value) {
+          console.error('Modal failed to render with order data, falling back to simple redirect')
+          showSuccessModal.value = false
+          globalStore.showSuccess('Order Placed Successfully!', `Your order has been created`)
+          router.push({ name: 'OrderManager' })
+        }
+      }, 1000)
     } else {
       const errorMessage = result.errors?.[0]?.message || result.message || 'Failed to create order'
       globalStore.showError('Order Failed', errorMessage)
@@ -567,9 +687,27 @@ async function handlePlaceOrder() {
 
 // Lifecycle
 onMounted(() => {
-  // Clear any existing cart when starting a new order
-  cartStore.clearCart()
   console.log('Create Order view loaded')
+  
+  // TEMPORARY: Test modal immediately (remove this after fixing)
+  // Uncomment the next 3 lines to test the modal and close button:
+  // setTimeout(() => {
+  //   showSuccessModal.value = true
+  // }, 1000)
+  
+  // Check if we're coming from the product catalog with a tab parameter
+  const tabParam = route.query.tab as string
+  
+  if (tabParam === 'customer' && !cartStore.isEmpty) {
+    // Coming from product catalog with items in cart - skip to customer tab
+    console.log('Coming from product catalog with cart items, starting at customer tab')
+    activeTab.value = 'customer'
+  } else {
+    // Starting fresh - clear cart and start at products tab
+    console.log('Starting fresh order, clearing cart')
+    cartStore.clearCart()
+    activeTab.value = 'products'
+  }
   
   // Add some demo products to test the cart (remove this in production)
   // Uncomment the following lines to test with demo data:
