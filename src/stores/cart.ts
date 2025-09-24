@@ -19,11 +19,29 @@ export const useCartStore = defineStore('cart', () => {
   )
 
   const shippingFeeCents = computed(() => {
-    return isOnlineOrder.value ? 500 : 0 // 5 PHP for online orders
+    if (!isOnlineOrder.value) return 0 // No shipping for in-store orders
+    
+    // Calculate shipping fee based on shipping method
+    const fees: Record<string, number> = {
+      standard: 500, // ₱5.00 for standard delivery
+      express: 1500, // ₱15.00 for express delivery
+      same_day: 3000, // ₱30.00 for same day delivery
+      pickup: 0 // Free for pickup
+    }
+    
+    return fees[shippingMethod.value] || 500 // Default to standard shipping
   })
 
   const convenienceFeeCents = computed(() => {
-    return paymentMethod.value === 'online' ? 100 : 0 // 1 PHP for online payments
+    // Calculate convenience fee based on payment method
+    const fees: Record<string, number> = {
+      cash: 0,
+      card: 100, // ₱1.00 for card processing
+      gcash: 50, // ₱0.50 for GCash
+      paymaya: 50, // ₱0.50 for PayMaya
+      bank_transfer: 0 // No fee for bank transfer
+    }
+    return fees[paymentMethod.value] || 0
   })
 
   const totalCents = computed(() => 
@@ -79,7 +97,7 @@ export const useCartStore = defineStore('cart', () => {
     customer.value = customerData
   }
 
-  function setDeliveryAddress(address: Address) {
+  function setDeliveryAddress(address: Address | null) {
     deliveryAddress.value = address
   }
 

@@ -11,7 +11,25 @@
             type="email"
             placeholder="customer@example.com"
             @input="handleEmailSearch"
+            :right-icon="emailSearchLoading ? SpinnerIcon : MagnifyingGlassIcon"
           />
+          
+          <!-- Email Search Results Dropdown -->
+          <div 
+            v-if="emailSearchResults.length > 0"
+            class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          >
+            <button
+              v-for="customer in emailSearchResults"
+              :key="customer.id"
+              @click="selectCustomer(customer)"
+              class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
+            >
+              <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
+              <div class="text-sm text-gray-600">{{ customer.email }}</div>
+              <div class="text-xs text-gray-500">{{ formatPhoneNumber(customer.phone) }}</div>
+            </button>
+          </div>
         </div>
 
         <!-- Phone Search -->
@@ -20,27 +38,28 @@
             v-model="phoneSearch"
             label="Search by Phone"
             type="tel"
-            placeholder="+1234567890"
+            placeholder="+639171234567"
             @input="handlePhoneSearch"
+            :right-icon="phoneSearchLoading ? SpinnerIcon : MagnifyingGlassIcon"
           />
+          
+          <!-- Phone Search Results Dropdown -->
+          <div 
+            v-if="phoneSearchResults.length > 0"
+            class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          >
+            <button
+              v-for="customer in phoneSearchResults"
+              :key="customer.id"
+              @click="selectCustomer(customer)"
+              class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
+            >
+              <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
+              <div class="text-sm text-gray-600">{{ formatPhoneNumber(customer.phone) }}</div>
+              <div class="text-xs text-gray-500">{{ customer.email }}</div>
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Search Results -->
-    <div v-if="searchResults.length > 0" class="space-y-2">
-      <h4 class="text-sm font-medium text-gray-900">Search Results</h4>
-      <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
-        <button
-          v-for="customer in searchResults"
-          :key="customer.id"
-          @click="selectCustomer(customer)"
-          class="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-        >
-          <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
-          <div class="text-sm text-gray-600">{{ customer.email }}</div>
-          <div class="text-xs text-gray-500">{{ customer.phone }}</div>
-        </button>
       </div>
     </div>
 
@@ -83,12 +102,14 @@
             v-model="newCustomerForm.firstName"
             label="First Name"
             required
+            :error="formErrors.firstName"
           />
           
           <BaseInput
             v-model="newCustomerForm.lastName"
             label="Last Name"
             required
+            :error="formErrors.lastName"
           />
         </div>
         
@@ -97,6 +118,8 @@
           label="Email"
           type="email"
           required
+          :error="formErrors.email"
+          placeholder="john@example.com"
         />
         
         <BaseInput
@@ -104,6 +127,9 @@
           label="Phone"
           type="tel"
           required
+          :error="formErrors.phone"
+          placeholder="+639171234567"
+          hint="Format: +639XXXXXXXXX or 09XXXXXXXXX"
         />
 
         <div class="flex items-center space-x-3">
@@ -125,16 +151,45 @@
         </div>
       </form>
     </div>
+    
+    <!-- Demo Section -->
+    <div class="mt-8 border-t border-gray-200 pt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="font-medium text-gray-900">Demo Customers</h4>
+        <button
+          @click="showDemo = !showDemo"
+          class="text-sm text-primary-600 hover:text-primary-800 transition-colors"
+        >
+          {{ showDemo ? 'Hide' : 'Show' }} Demo
+        </button>
+      </div>
+      
+      <div v-if="showDemo" class="space-y-3">
+        <p class="text-sm text-gray-600 mb-3">Try searching for these demo customers:</p>
+        <div class="grid grid-cols-1 gap-2">
+          <div 
+            v-for="customer in demoCustomers" 
+            :key="customer.id"
+            class="bg-gray-50 p-3 rounded-lg text-sm"
+          >
+            <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
+            <div class="text-gray-600">Email: {{ customer.email }}</div>
+            <div class="text-gray-600">Phone: {{ formatPhoneNumber(customer.phone) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { useCustomerSearch, useCreateCustomer, useCustomerUtils } from '../composables/useCustomers'
 import { useGlobalStore } from '../stores/global'
 import BaseInput from './BaseInput.vue'
 import BaseButton from './BaseButton.vue'
-import type { Customer } from '../types'
+import type { Customer, CustomerForm } from '../types'
 
 // Emits
 const emit = defineEmits<{
@@ -147,10 +202,16 @@ const emailSearch = ref('')
 const phoneSearch = ref('')
 const selectedCustomer = ref<Customer | null>(null)
 const showCreateForm = ref(false)
-const creatingCustomer = ref(false)
-const searchResults = ref<Customer[]>([])
+const showDemo = ref(false)
 
-const newCustomerForm = reactive({
+const newCustomerForm = reactive<CustomerForm>({
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: ''
+})
+
+const formErrors = reactive({
   firstName: '',
   lastName: '',
   email: '',
@@ -158,6 +219,17 @@ const newCustomerForm = reactive({
 })
 
 // Composables
+const {
+  searchByEmail,
+  searchByPhone,
+  emailResults: emailSearchResults,
+  phoneResults: phoneSearchResults,
+  emailLoading: emailSearchLoading,
+  phoneLoading: phoneSearchLoading
+} = useCustomerSearch()
+
+const { createCustomer, loading: creatingCustomer } = useCreateCustomer()
+const { formatPhoneNumber } = useCustomerUtils()
 const globalStore = useGlobalStore()
 
 // Computed
@@ -168,6 +240,34 @@ const isFormValid = computed(() =>
   newCustomerForm.phone
 )
 
+// Demo customers for testing
+const demoCustomers: Customer[] = [
+  {
+    id: '1',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+    phone: '+639171234567',
+    fullName: 'John Doe'
+  },
+  {
+    id: '2',
+    firstName: 'Maria',
+    lastName: 'Santos',
+    email: 'maria.santos@gmail.com',
+    phone: '+639171234568',
+    fullName: 'Maria Santos'
+  },
+  {
+    id: '3',
+    firstName: 'Jose',
+    lastName: 'Rizal',
+    email: 'jose.rizal@email.com',
+    phone: '+639171234569',
+    fullName: 'Jose Rizal'
+  }
+]
+
 // Methods
 let emailSearchTimeout: number
 function handleEmailSearch() {
@@ -175,10 +275,8 @@ function handleEmailSearch() {
   
   if (emailSearch.value.length > 2) {
     emailSearchTimeout = setTimeout(() => {
-      searchCustomers('email', emailSearch.value)
+      searchByEmail(emailSearch.value)
     }, 300)
-  } else {
-    searchResults.value = []
   }
 }
 
@@ -188,51 +286,8 @@ function handlePhoneSearch() {
   
   if (phoneSearch.value.length > 3) {
     phoneSearchTimeout = setTimeout(() => {
-      searchCustomers('phone', phoneSearch.value)
+      searchByPhone(phoneSearch.value)
     }, 300)
-  } else {
-    searchResults.value = []
-  }
-}
-
-function searchCustomers(type: 'email' | 'phone', query: string) {
-  // Mock customer data for demonstration
-  const mockCustomers: Customer[] = [
-    {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john@example.com',
-      phone: '+1234567890',
-      fullName: 'John Doe'
-    },
-    {
-      id: '2',
-      firstName: 'Jane',
-      lastName: 'Smith',
-      email: 'jane@example.com',
-      phone: '+1987654321',
-      fullName: 'Jane Smith'
-    },
-    {
-      id: '3',
-      firstName: 'Bob',
-      lastName: 'Johnson',
-      email: 'bob@example.com',
-      phone: '+1122334455',
-      fullName: 'Bob Johnson'
-    }
-  ]
-  
-  // Simple mock filtering
-  if (type === 'email') {
-    searchResults.value = mockCustomers.filter(customer => 
-      customer.email.toLowerCase().includes(query.toLowerCase())
-    )
-  } else {
-    searchResults.value = mockCustomers.filter(customer => 
-      customer.phone.includes(query)
-    )
   }
 }
 
@@ -240,8 +295,12 @@ function selectCustomer(customer: Customer) {
   selectedCustomer.value = customer
   emailSearch.value = ''
   phoneSearch.value = ''
-  searchResults.value = []
+  // Clear search results
+  emailSearchResults.value = []
+  phoneSearchResults.value = []
+  
   emit('customer-selected', customer)
+  globalStore.showSuccess('Customer Selected', `Selected ${customer.fullName}`)
 }
 
 function clearSelection() {
@@ -250,29 +309,37 @@ function clearSelection() {
 
 async function handleCreateCustomer() {
   if (!isFormValid.value) return
-
-  creatingCustomer.value = true
   
+  // Reset form errors
+  Object.keys(formErrors).forEach(key => {
+    formErrors[key as keyof typeof formErrors] = ''
+  })
+
   try {
-    // Simulate customer creation
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const result = await createCustomer(newCustomerForm)
     
-    const newCustomer: Customer = {
-      id: 'new-' + Date.now(),
-      ...newCustomerForm,
-      fullName: `${newCustomerForm.firstName} ${newCustomerForm.lastName}`
+    if (result.success && result.data) {
+      selectedCustomer.value = result.data
+      emit('customer-created', result.data)
+      resetForm()
+      showCreateForm.value = false
+      globalStore.showSuccess('Customer Created', `${result.data.fullName} has been created successfully`)
+    } else if (result.errors) {
+      // Handle field-specific errors
+      result.errors.forEach(error => {
+        if (error.field && error.field in formErrors) {
+          formErrors[error.field as keyof typeof formErrors] = error.message
+        }
+      })
+      
+      // Show general error if no field-specific errors
+      if (!result.errors.some(error => error.field)) {
+        globalStore.showError('Customer Creation Failed', result.message || 'Please check the form and try again')
+      }
     }
-    
-    selectedCustomer.value = newCustomer
-    emit('customer-created', newCustomer)
-    resetForm()
-    showCreateForm.value = false
-    
   } catch (error) {
     console.error('Error creating customer:', error)
     globalStore.showError('Error', 'Failed to create customer. Please try again.')
-  } finally {
-    creatingCustomer.value = false
   }
 }
 
@@ -281,5 +348,15 @@ function resetForm() {
   newCustomerForm.lastName = ''
   newCustomerForm.email = ''
   newCustomerForm.phone = ''
+  
+  // Clear errors
+  Object.keys(formErrors).forEach(key => {
+    formErrors[key as keyof typeof formErrors] = ''
+  })
+}
+
+// Icons for loading states
+const SpinnerIcon = {
+  template: '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>'
 }
 </script>

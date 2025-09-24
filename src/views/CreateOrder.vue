@@ -127,25 +127,168 @@
             </div>
           </div>
           
-          <!-- Placeholder for other tabs -->
+          <!-- Delivery Tab -->
           <div v-show="activeTab === 'delivery'">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-6">Delivery Information</h3>
-              <p class="text-gray-600">Delivery components will be implemented in the next phase.</p>
+            <div class="space-y-6">
+              <!-- Delivery Address Section -->
+              <div v-if="cartStore.isOnlineOrder && hasPhysicalProducts" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Delivery Address</h3>
+                <DeliveryAddressForm 
+                  :initial-address="cartStore.deliveryAddress"
+                  @address-updated="handleAddressUpdated"
+                  @address-cleared="handleAddressCleared"
+                />
+              </div>
+              
+              <!-- Shipping Method Section -->
+              <div v-if="cartStore.isOnlineOrder && hasPhysicalProducts && cartStore.deliveryAddress" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Shipping Method</h3>
+                <ShippingMethodSelector 
+                  :delivery-address="cartStore.deliveryAddress"
+                  @method-selected="handleShippingMethodSelected"
+                />
+              </div>
+              
+              <!-- No Delivery Needed Message -->
+              <div v-if="!cartStore.isOnlineOrder || !hasPhysicalProducts" class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div class="flex items-center">
+                  <InformationCircleIcon class="h-6 w-6 text-blue-500 mr-3" />
+                  <div>
+                    <h3 class="text-lg font-semibold text-blue-900">No Delivery Required</h3>
+                    <p class="text-blue-700 mt-1">
+                      {{ !cartStore.isOnlineOrder 
+                        ? 'This is an in-store order - customer will pick up items.'
+                        : 'Your cart contains only digital products - no shipping required.'
+                      }}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Continue Button -->
+                <div class="mt-4">
+                  <BaseButton @click="activeTab = 'payment'">
+                    Continue to Payment
+                  </BaseButton>
+                </div>
+              </div>
             </div>
           </div>
           
+          <!-- Payment Tab -->
           <div v-show="activeTab === 'payment'">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 class="text-lg font-semibold text-gray-900 mb-6">Payment Method</h3>
-              <p class="text-gray-600">Payment components will be implemented in the next phase.</p>
+              <PaymentMethodSelector 
+                @method-selected="handlePaymentMethodSelected"
+              />
             </div>
           </div>
           
+          <!-- Review Tab -->
           <div v-show="activeTab === 'review'">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-6">Order Review</h3>
-              <p class="text-gray-600">Order review will be implemented in the next phase.</p>
+            <div class="space-y-6">
+              <!-- Order Summary -->
+              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Order Summary</h3>
+                
+                <!-- Customer Info -->
+                <div class="mb-6">
+                  <h4 class="font-medium text-gray-900 mb-3">Customer</h4>
+                  <div v-if="cartStore.customer" class="text-sm text-gray-600">
+                    <div><strong>Name:</strong> {{ cartStore.customer.fullName }}</div>
+                    <div><strong>Email:</strong> {{ cartStore.customer.email }}</div>
+                    <div><strong>Phone:</strong> {{ cartStore.customer.phone }}</div>
+                  </div>
+                </div>
+                
+                <!-- Delivery Info -->
+                <div v-if="cartStore.deliveryAddress" class="mb-6">
+                  <h4 class="font-medium text-gray-900 mb-3">Delivery Address</h4>
+                  <div class="text-sm text-gray-600">
+                    <div v-if="cartStore.deliveryAddress.unitFloorBuilding">
+                      {{ cartStore.deliveryAddress.unitFloorBuilding }}
+                    </div>
+                    <div>{{ cartStore.deliveryAddress.displayAddress }}</div>
+                  </div>
+                </div>
+                
+                <!-- Order Items -->
+                <div class="mb-6">
+                  <h4 class="font-medium text-gray-900 mb-3">Items ({{ cartStore.totalItems }})</h4>
+                  <div class="space-y-2">
+                    <div 
+                      v-for="item in cartStore.items" 
+                      :key="item.productId"
+                      class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+                    >
+                      <div class="flex-1">
+                        <div class="font-medium text-gray-900">{{ item.name }}</div>
+                        <div class="text-sm text-gray-500">{{ item.quantity }} x {{ formatPrice(item.priceCents) }}</div>
+                      </div>
+                      <div class="font-medium text-gray-900">
+                        {{ formatPrice(item.priceCents * item.quantity) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Pricing Breakdown -->
+                <div class="border-t border-gray-200 pt-4">
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Subtotal</span>
+                      <span class="font-medium">{{ formatPrice(cartStore.subtotalCents) }}</span>
+                    </div>
+                    
+                    <div v-if="cartStore.shippingFeeCents > 0" class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Shipping Fee</span>
+                      <span class="font-medium">{{ formatPrice(cartStore.shippingFeeCents) }}</span>
+                    </div>
+                    
+                    <div v-if="cartStore.convenienceFeeCents > 0" class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Convenience Fee</span>
+                      <span class="font-medium">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
+                    </div>
+                    
+                    <div v-if="cartStore.voucherDiscount > 0" class="flex items-center justify-between text-sm text-green-600">
+                      <span>Voucher Discount ({{ cartStore.voucherCode }})</span>
+                      <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 pt-2 mt-3">
+                      <div class="flex items-center justify-between text-lg font-semibold">
+                        <span class="text-gray-900">Total</span>
+                        <span class="text-primary-600">{{ formatPrice(cartStore.totalCents) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Place Order Button -->
+                <div class="mt-8">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-gray-600 mb-2">
+                        Review your order details and click "Place Order" to confirm.
+                      </p>
+                      <div v-if="validationErrors.length > 0" class="space-y-1">
+                        <p v-for="error in validationErrors" :key="error" class="text-sm text-red-600">
+                          • {{ error }}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <BaseButton
+                      size="lg"
+                      @click="handlePlaceOrder"
+                      :disabled="!canPlaceOrder"
+                      :loading="placingOrder"
+                    >
+                      Place Order
+                    </BaseButton>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -180,7 +323,8 @@ import {
   CreditCardIcon,
   ClipboardDocumentCheckIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 import { useCartStore } from '../stores/cart'
 import { useGlobalStore } from '../stores/global'
@@ -190,18 +334,55 @@ import ProductCatalog from '../components/ProductCatalog.vue'
 import ShoppingCart from '../components/ShoppingCart.vue'
 import CustomerSearchForm from '../components/CustomerSearchForm.vue'
 import ProductDetailModal from '../components/ProductDetailModal.vue'
-import type { Product, Customer } from '../types'
+import DeliveryAddressForm from '../components/DeliveryAddressForm.vue'
+import ShippingMethodSelector from '../components/ShippingMethodSelector.vue'
+import PaymentMethodSelector from '../components/PaymentMethodSelector.vue'
+import type { Product, Customer, Address, CreateOrderInput } from '../types'
+import useOrderCreation from '../composables/useCreateOrder'
 
 // Composables
 const router = useRouter()
 const cartStore = useCartStore()
 const globalStore = useGlobalStore()
+const { createOrder, loading: placingOrder } = useOrderCreation()
 
 // State
 const activeTab = ref('products')
 const selectedProduct = ref<Product | null>(null)
+const validationErrors = ref<string[]>([])
 
 // Computed
+const hasPhysicalProducts = computed(() => 
+  cartStore.items.some(item => item.productType === 'PHYSICAL')
+)
+
+const canPlaceOrder = computed(() => {
+  validationErrors.value = []
+  
+  if (cartStore.isEmpty) {
+    validationErrors.value.push('Cart is empty')
+    return false
+  }
+  
+  if (!cartStore.customer) {
+    validationErrors.value.push('Customer information is required')
+  }
+  
+  if (cartStore.isOnlineOrder && hasPhysicalProducts.value && !cartStore.deliveryAddress) {
+    validationErrors.value.push('Delivery address is required for online orders with physical products')
+  }
+  
+  if (cartStore.isOnlineOrder && hasPhysicalProducts.value && !cartStore.shippingMethod) {
+    validationErrors.value.push('Shipping method is required')
+  }
+  
+  if (!cartStore.paymentMethod) {
+    validationErrors.value.push('Payment method is required')
+  }
+  
+  return validationErrors.value.length === 0
+})
+
 const tabs = computed(() => [
   {
     key: 'products',
@@ -289,6 +470,88 @@ function handleContinueCheckout() {
     activeTab.value = 'customer'
   } else {
     activeTab.value = 'delivery'
+  }
+}
+
+function handleAddressUpdated(address: Address) {
+  cartStore.setDeliveryAddress(address)
+  globalStore.showSuccess('Address Updated', 'Delivery address has been saved')
+}
+
+function handleAddressCleared() {
+  cartStore.setDeliveryAddress(null)
+  cartStore.setShippingMethod('')
+}
+
+function handleShippingMethodSelected(methodCode: string, methodLabel: string, feeCents: number) {
+  cartStore.setShippingMethod(methodCode)
+  // The shipping fee will be automatically calculated by the cart store
+  // based on the selected method and order type
+}
+
+function handlePaymentMethodSelected(methodCode: string, methodLabel: string, convenienceFeeCents: number) {
+  cartStore.setPaymentMethod(methodCode)
+  // The convenience fee will be automatically calculated by the cart store
+  // based on the selected payment method
+}
+
+async function handlePlaceOrder() {
+  if (!canPlaceOrder.value) {
+    globalStore.showError('Validation Error', 'Please complete all required information before placing the order')
+    return
+  }
+
+  try {
+    const orderInput: CreateOrderInput = {
+      source: cartStore.isOnlineOrder ? 'ONLINE' : 'IN_STORE',
+      items: cartStore.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPriceCents: item.priceCents
+      })),
+      customer: {
+        firstName: cartStore.customer!.firstName,
+        lastName: cartStore.customer!.lastName,
+        email: cartStore.customer!.email,
+        phone: cartStore.customer!.phone
+      },
+      delivery: cartStore.deliveryAddress ? {
+        unitFloorBuilding: cartStore.deliveryAddress.unitFloorBuilding,
+        street: cartStore.deliveryAddress.street,
+        barangay: cartStore.deliveryAddress.barangay,
+        city: cartStore.deliveryAddress.city,
+        province: cartStore.deliveryAddress.province,
+        postalCode: cartStore.deliveryAddress.postalCode
+      } : undefined,
+      shippingMethodCode: cartStore.shippingMethod || undefined,
+      paymentMethodCode: cartStore.paymentMethod,
+      voucherCode: cartStore.voucherCode || undefined
+    }
+
+    console.log('Placing order with data:', orderInput)
+    
+    const result = await createOrder(orderInput)
+    
+    if (result.success && result.data) {
+      globalStore.showSuccess(
+        'Order Placed Successfully!', 
+        `Your order ${result.data.reference} has been created`
+      )
+      
+      // Clear cart and redirect
+      cartStore.clearCart()
+      router.push({ name: 'OrderManager' })
+    } else {
+      const errorMessage = result.errors?.[0]?.message || result.message || 'Failed to create order'
+      globalStore.showError('Order Failed', errorMessage)
+      
+      if (result.errors) {
+        validationErrors.value = result.errors.map(err => err.message)
+      }
+    }
+  } catch (error) {
+    console.error('Error placing order:', error)
+    globalStore.showError('Order Failed', 'An unexpected error occurred while placing your order')
   }
 }
 
