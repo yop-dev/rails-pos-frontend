@@ -244,7 +244,8 @@ const {
   emailLoading: emailSearchLoading,
   phoneLoading: phoneSearchLoading,
   emailError,
-  phoneError
+  phoneError,
+  clearAllResults
 } = useCustomerSearch()
 
 const { createCustomer, loading: creatingCustomer } = useCreateCustomer()
@@ -268,11 +269,8 @@ function handleEmailSearch() {
     clearTimeout(emailSearchTimeout)
   }
   
-  // Clear results immediately if search is too short
-  if (emailSearch.value.length < 3) {
-    emailSearchResults.value = []
-    return
-  }
+  // The computed properties will automatically handle clearing when too short
+  // No need to manually clear results here anymore
   
   // Debounce with longer timeout for better UX
   emailSearchTimeout = setTimeout(async () => {
@@ -292,11 +290,8 @@ function handlePhoneSearch() {
     clearTimeout(phoneSearchTimeout)
   }
   
-  // Clear results immediately if search is too short
-  if (phoneSearch.value.length < 4) {
-    phoneSearchResults.value = []
-    return
-  }
+  // The computed properties will automatically handle clearing when too short
+  // No need to manually clear results here anymore
   
   // Debounce with longer timeout for better UX
   phoneSearchTimeout = setTimeout(async () => {
@@ -313,9 +308,8 @@ function selectCustomer(customer: Customer) {
   selectedCustomer.value = customer
   emailSearch.value = ''
   phoneSearch.value = ''
-  // Clear search results
-  emailSearchResults.value = []
-  phoneSearchResults.value = []
+  // Clear search results using the composable function
+  clearAllResults()
   
   emit('customer-selected', customer)
   globalStore.showSuccess('Customer Selected', `Selected ${customer.fullName}`)
