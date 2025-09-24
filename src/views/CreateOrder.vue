@@ -730,12 +730,18 @@ onMounted(() => {
   // Check if we're coming from the product catalog with a tab parameter
   const tabParam = route.query.tab as string
   
-  if (tabParam === 'customer' && !cartStore.isEmpty) {
-    // Coming from product catalog with items in cart - skip to customer tab
-    console.log('Coming from product catalog with cart items, starting at customer tab')
-    activeTab.value = 'customer'
+  if (tabParam === 'customer') {
+    if (!cartStore.isEmpty) {
+      // Coming from cart dropdown with items - preserve cart and go to customer tab
+      console.log('Coming from cart dropdown with items, starting at customer tab')
+      activeTab.value = 'customer'
+    } else {
+      // Empty cart but customer tab requested - go to products first
+      console.log('Customer tab requested but cart is empty, starting at products')
+      activeTab.value = 'products'
+    }
   } else {
-    // Starting fresh - clear cart and start at products tab
+    // Starting fresh from navigation - clear cart and start at products tab
     console.log('Starting fresh order, clearing cart')
     cartStore.clearCart()
     activeTab.value = 'products'

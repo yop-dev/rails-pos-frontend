@@ -1,17 +1,41 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Product, Customer, Address, CartItem } from '../types'
 
+// Helper functions for localStorage persistence
+const CART_STORAGE_KEY = 'pos_cart_data'
+
+function saveToStorage(data: any) {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data))
+  } catch (error) {
+    console.warn('Failed to save cart to localStorage:', error)
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : null
+  } catch (error) {
+    console.warn('Failed to load cart from localStorage:', error)
+    return null
+  }
+}
+
 export const useCartStore = defineStore('cart', () => {
+  // Load initial data from localStorage
+  const initialData = loadFromStorage() || {}
+  
   // State
-  const items = ref<CartItem[]>([])
-  const customer = ref<Customer | null>(null)
-  const deliveryAddress = ref<Address | null>(null)
-  const paymentMethod = ref<string>('')
-  const shippingMethod = ref<string>('')
-  const isOnlineOrder = ref(true)
-  const voucherCode = ref('')
-  const voucherDiscount = ref(0)
+  const items = ref<CartItem[]>(initialData.items || [])
+  const customer = ref<Customer | null>(initialData.customer || null)
+  const deliveryAddress = ref<Address | null>(initialData.deliveryAddress || null)
+  const paymentMethod = ref<string>(initialData.paymentMethod || '')
+  const shippingMethod = ref<string>(initialData.shippingMethod || '')
+  const isOnlineOrder = ref<boolean>(initialData.isOnlineOrder ?? true)
+  const voucherCode = ref<string>(initialData.voucherCode || '')
+  const voucherDiscount = ref<number>(initialData.voucherDiscount || 0)
 
   // Getters
   const subtotalCents = computed(() => 
@@ -131,12 +155,37 @@ export const useCartStore = defineStore('cart', () => {
     voucherCode.value = ''
     voucherDiscount.value = 0
     isOnlineOrder.value = true
+    
+    // Clear from localStorage as well
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY)
+    } catch (error) {
+      console.warn('Failed to clear cart from localStorage:', error)
+    }
   }
 
   // Custom reset function for Setup Stores
   function $reset() {
     clearCart()
   }
+
+  // Watch for changes and persist to localStorage
+  watch(
+    () => ({
+      items: items.value,
+      customer: customer.value,
+      deliveryAddress: deliveryAddress.value,
+      paymentMethod: paymentMethod.value,
+      shippingMethod: shippingMethod.value,
+      isOnlineOrder: isOnlineOrder.value,
+      voucherCode: voucherCode.value,
+      voucherDiscount: voucherDiscount.value
+    }),
+    (newData) => {
+      saveToStorage(newData)
+    },
+    { deep: true }
+  )
 
   return {
     // State

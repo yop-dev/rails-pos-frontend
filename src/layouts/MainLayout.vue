@@ -291,7 +291,12 @@ function getUserInitials(): string {
 // Mobile-specific handlers
 function handleMobileCheckout() {
   mobileMenuOpen.value = false
-  router.push({ name: 'CreateOrder' })
+  // If cart has items, go directly to customer section
+  if (!cartStore.isEmpty) {
+    router.push({ name: 'CreateOrder', query: { tab: 'customer' } })
+  } else {
+    router.push({ name: 'CreateOrder' })
+  }
 }
 
 function handleMobileProfile() {
