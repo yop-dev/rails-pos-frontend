@@ -51,27 +51,28 @@ export interface Order {
   reference: string
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED'
   source: 'ONLINE' | 'IN_STORE'
-  subtotalCents: number
-  shippingFeeCents: number
-  convenienceFeeCents: number
-  discountCents: number
-  totalCents: number
+  subtotal: Money
+  shippingFee: Money
+  convenienceFee: Money
+  discount: Money
+  total: Money
   shippingMethodLabel?: string
   paymentMethodLabel?: string
+  voucherCode?: string
   createdAt: string
   confirmedAt?: string
   completedAt?: string
   customer: Customer
   deliveryAddress?: Address
-  orderItems: OrderItem[]
+  items: OrderItem[]
 }
 
 export interface OrderItem {
   id: string
   quantity: number
-  unitPriceCents: number
-  totalPriceCents: number
-  productNameSnapshot: string
+  unitPrice: Money
+  totalPrice: Money
+  productName: string
   product: Product
 }
 
@@ -272,12 +273,7 @@ export interface FormField {
   options?: Array<{ value: string; label: string }>
 }
 
-// Money and Currency Types
-export interface Money {
-  cents: number
-  currency: string
-  formatted: string
-}
+// Money and Currency Types (already defined above)
 
 export interface PriceRange {
   min: number
