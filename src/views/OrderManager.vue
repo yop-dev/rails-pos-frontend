@@ -16,6 +16,43 @@
       </BaseButton>
     </div>
 
+    <!-- Search and Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <!-- Search Input -->
+        <div class="flex-1">
+          <div class="relative">
+            <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <BaseInput
+              v-model="searchQuery"
+              placeholder="Search orders by reference, customer name, email, phone, or products..."
+              class="pl-10"
+            />
+          </div>
+        </div>
+        
+        <!-- Clear Search Button -->
+        <BaseButton
+          v-if="searchQuery"
+          @click="clearSearch"
+          variant="secondary"
+          :left-icon="XMarkIcon"
+        >
+          Clear
+        </BaseButton>
+      </div>
+      
+      <!-- Search Results Info -->
+      <div v-if="searchQuery && filteredOrders.length > 0" class="mt-3 text-sm text-gray-600">
+        Found {{ filteredOrders.length }} order{{ filteredOrders.length === 1 ? '' : 's' }} 
+        {{ activeStatus === 'PENDING' ? 'pending' : activeStatus === 'CONFIRMED' ? 'confirmed' : 'completed' }}
+      </div>
+      
+      <div v-else-if="searchQuery && filteredOrders.length === 0" class="mt-3 text-sm text-gray-500">
+        No {{ activeStatus.toLowerCase() }} orders found matching "{{ searchQuery }}"
+      </div>
+    </div>
+
     <!-- Order Status Tabs -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
       <div class="border-b border-gray-200">
@@ -59,21 +96,33 @@
         <div v-else-if="filteredOrders.length === 0" class="text-center py-12">
           <ClipboardDocumentListIcon class="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 class="text-lg font-medium text-gray-900 mb-2">
-            No {{ activeStatus.toLowerCase() }} orders
+            {{ searchQuery ? 'No matching orders found' : `No ${activeStatus.toLowerCase()} orders` }}
           </h3>
           <p class="text-gray-500 mb-6">
-            {{ activeStatus === 'PENDING' 
-              ? 'Create your first order to get started' 
-              : `No orders with ${activeStatus.toLowerCase()} status` 
+            {{ searchQuery 
+              ? `No ${activeStatus.toLowerCase()} orders match your search "${searchQuery}"` 
+              : activeStatus === 'PENDING' 
+                ? 'Create your first order to get started' 
+                : `No orders with ${activeStatus.toLowerCase()} status` 
             }}
           </p>
           
-          <BaseButton
-            v-if="activeStatus === 'PENDING'"
-            @click="router.push({ name: 'CreateOrder' })"
-          >
-            Create First Order
-          </BaseButton>
+          <div class="space-x-4">
+            <BaseButton
+              v-if="searchQuery"
+              @click="clearSearch"
+              variant="secondary"
+            >
+              Clear Search
+            </BaseButton>
+            
+            <BaseButton
+              v-if="activeStatus === 'PENDING' && !searchQuery"
+              @click="router.push({ name: 'CreateOrder' })"
+            >
+              Create First Order
+            </BaseButton>
+          </div>
         </div>
 
         <!-- Orders List -->
@@ -99,9 +148,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { PlusIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useOrders, useOrderActions } from '../composables/useOrders'
 import BaseButton from '../components/BaseButton.vue'
+import BaseInput from '../components/BaseInput.vue'
 import OrderCard from '../components/OrderCard.vue'
 import type { Order, OrderStatus } from '../types'
 
@@ -112,6 +162,7 @@ const { confirmOrder, completeOrder } = useOrderActions()
 
 // State
 const activeStatus = ref<OrderStatus>('PENDING')
+const searchQuery = ref('')
 const confirmingOrderId = ref<string | null>(null)
 const completingOrderId = ref<string | null>(null)
 
@@ -134,11 +185,56 @@ const statusTabs = computed(() => [
   }
 ])
 
-const filteredOrders = computed(() => 
-  orders.value.filter((order: Order) => order.status === activeStatus.value)
-)
+const filteredOrders = computed(() => {
+  let filtered = orders.value.filter((order: Order) => order.status === activeStatus.value)
+  
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    
+    filtered = filtered.filter((order: Order) => {
+      // Search in order reference
+      if (order.reference.toLowerCase().includes(query)) {
+        return true
+      }
+      
+      // Search in customer name
+      const fullName = `${order.customer.firstName} ${order.customer.lastName}`.toLowerCase()
+      if (fullName.includes(query) || 
+          order.customer.firstName.toLowerCase().includes(query) ||
+          order.customer.lastName.toLowerCase().includes(query)) {
+        return true
+      }
+      
+      // Search in customer email
+      if (order.customer.email.toLowerCase().includes(query)) {
+        return true
+      }
+      
+      // Search in customer phone
+      if (order.customer.phone.toLowerCase().includes(query)) {
+        return true
+      }
+      
+      // Search in product names
+      const hasMatchingProduct = order.items.some(item => 
+        item.productName.toLowerCase().includes(query)
+      )
+      if (hasMatchingProduct) {
+        return true
+      }
+      
+      return false
+    })
+  }
+  
+  return filtered
+})
 
 // Methods
+function clearSearch() {
+  searchQuery.value = ''
+}
+
 function handleViewOrder(order: Order) {
   router.push({ name: 'OrderDetail', params: { id: order.id } })
 }

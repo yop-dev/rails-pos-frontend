@@ -175,17 +175,7 @@
           </div>
 
           <!-- Action Buttons -->
-          <div class="px-4 py-3 bg-gray-50 rounded-b-lg space-y-2">
-            <BaseButton
-              @click="handleViewCart"
-              variant="secondary"
-              size="sm"
-              class="w-full"
-            >
-              <EyeIcon class="w-4 h-4 mr-2" />
-              View Full Cart
-            </BaseButton>
-            
+          <div class="px-4 py-3 bg-gray-50 rounded-b-lg">
             <BaseButton
               @click="handleCheckout"
               size="sm"
@@ -216,7 +206,6 @@ import {
   CubeIcon,
   MinusIcon,
   PlusIcon,
-  EyeIcon,
   CreditCardIcon
 } from '@heroicons/vue/24/outline'
 import { useCartStore } from '../stores/cart'
@@ -266,12 +255,6 @@ function handleClearCart() {
 function handleBrowseProducts() {
   dropdownOpen.value = false
   router.push({ name: 'ProductManager' })
-}
-
-function handleViewCart() {
-  dropdownOpen.value = false
-  // TODO: Navigate to full cart view or open cart modal
-  globalStore.showInfo('Full Cart', 'Full cart view coming soon!')
 }
 
 function handleCheckout() {

@@ -35,9 +35,6 @@
 
           <!-- Right Section -->
           <div class="flex items-center space-x-4">
-            <!-- Quick Actions Toolbar -->
-            <QuickActionsToolbar class="hidden lg:flex" />
-            
             <!-- Cart Dropdown -->
             <CartDropdown />
 
@@ -69,20 +66,6 @@
       >
         <div v-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 bg-white shadow-lg">
           <div class="px-2 pt-2 pb-3 space-y-1">
-            <!-- Quick Actions Section -->
-            <div class="mb-4">
-              <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Quick Actions
-              </h3>
-              <BaseButton
-                @click="handleMobileCreateOrder"
-                size="sm"
-                class="w-full mb-2"
-                :left-icon="PlusIcon"
-              >
-                Create Order
-              </BaseButton>
-            </div>
 
             <!-- Navigation Routes -->
             <div class="mb-4">
@@ -223,7 +206,6 @@ import {
   XMarkIcon,
   ClipboardDocumentListIcon,
   CubeIcon,
-  PlusIcon,
   ChevronRightIcon,
   UserIcon,
   ArrowRightOnRectangleIcon
@@ -235,7 +217,6 @@ import LoadingOverlay from '../components/LoadingOverlay.vue'
 import UserProfileDropdown from '../components/UserProfileDropdown.vue'
 import CartDropdown from '../components/CartDropdown.vue'
 import BreadcrumbNavigation from '../components/BreadcrumbNavigation.vue'
-import QuickActionsToolbar from '../components/QuickActionsToolbar.vue'
 import BaseButton from '../components/BaseButton.vue'
 
 // Composables
@@ -308,12 +289,6 @@ function getUserInitials(): string {
 }
 
 // Mobile-specific handlers
-function handleMobileCreateOrder() {
-  mobileMenuOpen.value = false
-  router.push({ name: 'CreateOrder' })
-  globalStore.showInfo('Create Order', 'Redirecting to order creation...')
-}
-
 function handleMobileCheckout() {
   mobileMenuOpen.value = false
   router.push({ name: 'CreateOrder' })
