@@ -23,7 +23,7 @@ const cache = new InMemoryCache({
     },
     Product: {
       fields: {
-        priceCents: {
+        price: {
           // Always use the latest price from server
           merge: false,
         },

@@ -1,10 +1,15 @@
 // GraphQL Types (matching backend schema with camelCase)
+export interface Money {
+  cents: number
+  currency: string
+  formatted: string
+}
+
 export interface Product {
   id: string
   name: string
   description?: string
-  priceCents: number
-  currency: string
+  price: Money
   productType: 'PHYSICAL' | 'DIGITAL'
   active: boolean
   createdAt: string
@@ -17,6 +22,7 @@ export interface Category {
   id: string
   name: string
   position: number
+  productsCount: number
 }
 
 export interface Customer {
@@ -72,7 +78,7 @@ export interface OrderItem {
 export interface CartItem {
   productId: string
   name: string
-  priceCents: number
+  priceCents: number  // Local cart storage uses cents for calculations
   productType: 'PHYSICAL' | 'DIGITAL'
   quantity: number
   photoUrl?: string | null

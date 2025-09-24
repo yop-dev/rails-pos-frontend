@@ -49,7 +49,7 @@ export const useCartStore = defineStore('cart', () => {
       items.value.push({
         productId: product.id,
         name: product.name,
-        priceCents: product.priceCents,
+        priceCents: product.price.cents,
         productType: product.productType,
         quantity,
         photoUrl: product.photoUrl || null
