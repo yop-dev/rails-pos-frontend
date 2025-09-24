@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { User, LoginCredentials } from '../types'
+import useAuthentication, { useTokenManager } from '../composables/useAuth'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
   const token = ref<string | null>(null)
+  const refreshToken = ref<string | null>(null)
   const isLoading = ref(false)
+
+  // Composables
+  const { login: authLogin, logout: authLogout, refreshToken: authRefreshToken, loginLoading } = useAuthentication()
+  const { setTokens, setUser, getToken, getRefreshToken, getStoredUser, clearTokens, isTokenExpired } = useTokenManager()
 
   // Getters
   const isLoggedIn = computed(() => !!user.value && !!token.value)
@@ -20,98 +27,164 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     
     try {
-      // TODO: Replace with actual GraphQL mutation when authentication is implemented
-      // For now, simulate login with mock data for testing
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API delay
+      console.log('AuthStore: Attempting login')
       
-      // Mock successful login - replace with actual GraphQL call
-      if (credentials.email && credentials.password) {
-        const mockUser: User = {
-          id: '1',
-          firstName: 'Test',
-          lastName: 'User',
-          email: credentials.email,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        }
+      const result = await authLogin(credentials)
+      
+      if (result.success && result.data) {
+        // Set user and tokens
+        user.value = result.data.user
+        token.value = result.data.token
+        refreshToken.value = result.data.refreshToken || null
         
-        user.value = mockUser
-        token.value = 'mock-jwt-token-' + Date.now()
+        // Store in localStorage
+        setTokens(result.data.token, result.data.refreshToken)
+        setUser(result.data.user)
         
-        // Store token in localStorage
-        localStorage.setItem('pos_auth_token', token.value)
+        console.log('AuthStore: Login successful', { user: user.value.email, role: user.value.role })
         
         return { success: true }
       } else {
+        console.log('AuthStore: Login failed', result.message)
         return { 
           success: false, 
-          error: 'Invalid credentials' 
+          error: result.message || 'Login failed. Please try again.' 
         }
       }
     } catch (error) {
+      console.error('AuthStore: Login error', error)
       return { 
         success: false, 
-        error: 'Login failed. Please try again.' 
+        error: 'An unexpected error occurred during login.' 
       }
     } finally {
       isLoading.value = false
     }
   }
 
-  function logout() {
-    user.value = null
-    token.value = null
-    localStorage.removeItem('pos_auth_token')
+  async function logout() {
+    console.log('AuthStore: Attempting logout')
+    
+    try {
+      // Call server logout (optional, even if it fails we clear local state)
+      await authLogout()
+    } catch (error) {
+      console.warn('AuthStore: Server logout failed, clearing local state anyway', error)
+    } finally {
+      // Always clear local state
+      user.value = null
+      token.value = null
+      refreshToken.value = null
+      clearTokens()
+      
+      console.log('AuthStore: Logout completed')
+    }
   }
 
-  function initializeAuth() {
-    const savedToken = localStorage.getItem('pos_auth_token')
-    if (savedToken) {
-      token.value = savedToken
-      // TODO: Verify token with backend and get user info
-      // For now, set a mock user for testing
-      user.value = {
-        id: '1',
-        firstName: 'Test',
-        lastName: 'User',
-        email: 'test@example.com',
-        role: 'admin',
-        createdAt: new Date().toISOString()
+  async function initializeAuth() {
+    console.log('AuthStore: Initializing authentication...')
+    
+    const savedToken = getToken()
+    const savedRefreshToken = getRefreshToken()
+    const savedUser = getStoredUser()
+    
+    if (savedToken && savedUser) {
+      // Check if token is expired
+      if (isTokenExpired(savedToken)) {
+        console.log('AuthStore: Token expired, attempting refresh...')
+        
+        if (savedRefreshToken) {
+          const refreshResult = await refreshAuthToken(savedRefreshToken)
+          if (!refreshResult.success) {
+            console.log('AuthStore: Refresh failed, clearing stored auth')
+            clearTokens()
+            return
+          }
+        } else {
+          console.log('AuthStore: No refresh token available, clearing auth')
+          clearTokens()
+          return
+        }
+      } else {
+        // Token is valid, restore auth state
+        user.value = savedUser
+        token.value = savedToken
+        refreshToken.value = savedRefreshToken
+        
+        console.log('AuthStore: Auth restored from storage', { user: user.value.email })
+      }
+    } else {
+      console.log('AuthStore: No stored authentication found')
+    }
+  }
+
+  async function refreshAuthToken(refreshTokenValue: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('AuthStore: Refreshing authentication token...')
+      
+      const result = await authRefreshToken(refreshTokenValue)
+      
+      if (result.success && result.data) {
+        // Update auth state
+        user.value = result.data.user
+        token.value = result.data.token
+        refreshToken.value = result.data.refreshToken || null
+        
+        // Update localStorage
+        setTokens(result.data.token, result.data.refreshToken)
+        setUser(result.data.user)
+        
+        console.log('AuthStore: Token refresh successful')
+        return { success: true }
+      } else {
+        console.log('AuthStore: Token refresh failed', result.message)
+        return {
+          success: false,
+          error: result.message || 'Token refresh failed'
+        }
+      }
+    } catch (error) {
+      console.error('AuthStore: Token refresh error', error)
+      return {
+        success: false,
+        error: 'Failed to refresh authentication token'
       }
     }
   }
 
-  async function verifyToken(authToken: string) {
+  async function verifyToken(authToken: string): Promise<boolean> {
     try {
-      // TODO: Call backend to verify token and get user info
-      // For now, just validate that token exists
-      if (authToken && authToken.startsWith('mock-jwt-token-')) {
-        user.value = {
-          id: '1',
-          firstName: 'Test',
-          lastName: 'User',
-          email: 'test@example.com',
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        }
-      } else {
+      if (!authToken || isTokenExpired(authToken)) {
+        console.log('AuthStore: Token is invalid or expired')
         logout()
+        return false
       }
+      
+      // TODO: Add server-side token verification query
+      // For now, just check if token exists and is not expired
+      return true
     } catch (error) {
+      console.error('AuthStore: Token verification failed', error)
       logout()
+      return false
     }
   }
 
   // Custom reset function for Setup Stores
   function $reset() {
-    logout()
+    user.value = null
+    token.value = null
+    refreshToken.value = null
+    isLoading.value = false
+    clearTokens()
   }
 
   return {
     // State
     user,
     token,
-    isLoading,
+    refreshToken,
+    isLoading: computed(() => isLoading.value || loginLoading.value),
     
     // Getters
     isLoggedIn,
@@ -122,6 +195,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     initializeAuth,
+    refreshAuthToken,
     verifyToken,
     $reset
   }

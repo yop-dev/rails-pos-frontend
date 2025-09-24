@@ -187,9 +187,19 @@ function formatPrice(cents: number): string {
   return (cents / 100).toFixed(2)
 }
 
-function handleLogout() {
-  authStore.logout()
-  globalStore.showInfo('Logged Out', 'You have been successfully logged out')
-  router.push({ name: 'OrderManager' })
+async function handleLogout() {
+  try {
+    await authStore.logout()
+    globalStore.showInfo('Logged Out', 'You have been successfully logged out')
+    
+    // Redirect to login page after logout
+    router.push({ name: 'Login' })
+  } catch (error) {
+    console.error('Logout error:', error)
+    globalStore.showError('Logout Failed', 'An error occurred during logout')
+    
+    // Even if logout fails on server, redirect to login
+    router.push({ name: 'Login' })
+  }
 }
 </script>
