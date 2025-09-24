@@ -9,7 +9,9 @@ export interface Product {
   id: string
   name: string
   description?: string
+  priceCents: number
   price: Money
+  currency: string
   productType: 'PHYSICAL' | 'DIGITAL'
   active: boolean
   createdAt: string
@@ -41,9 +43,9 @@ export interface Address {
   barangay: string
   city: string
   province: string
-  postalCode: string
-  fullAddress: string
-  displayAddress: string
+  postalCode?: string
+  landmark?: string
+  remarks?: string
 }
 
 export interface Order {
@@ -51,14 +53,13 @@ export interface Order {
   reference: string
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED'
   source: 'ONLINE' | 'IN_STORE'
-  subtotal: Money
-  shippingFee: Money
-  convenienceFee: Money
-  discount: Money
-  total: Money
+  subtotalCents: number
+  shippingFeeCents: number
+  convenienceFeeCents: number
+  discountCents: number
+  totalCents: number
   shippingMethodLabel?: string
   paymentMethodLabel?: string
-  voucherCode?: string
   createdAt: string
   confirmedAt?: string
   completedAt?: string
@@ -70,8 +71,8 @@ export interface Order {
 export interface OrderItem {
   id: string
   quantity: number
-  unitPrice: Money
-  totalPrice: Money
+  unitPriceCents: number
+  totalPriceCents: number
   productName: string
   product: Product
 }
@@ -168,16 +169,15 @@ export interface CreateOrderInput {
   source: OrderSource
   items: OrderItemInput[]
   customer: CustomerInput
-  delivery?: AddressInput
-  shippingMethodCode?: string
+  customerId?: string
+  deliveryAddress?: AddressInput
   paymentMethodCode: string
-  voucherCode?: string
+  notes?: string
 }
 
 export interface OrderItemInput {
   productId: string
   quantity: number
-  unitPriceCents: number
 }
 
 export interface CustomerInput {
@@ -188,14 +188,12 @@ export interface CustomerInput {
 }
 
 export interface AddressInput {
-  street: string
-  unitFloorBuilding?: string
-  barangay: string
+  line1: string
+  line2?: string
   city: string
-  province: string
-  postalCode?: string
-  landmark?: string
-  remarks?: string
+  state?: string
+  postalCode: string
+  country: string
 }
 
 export interface CreateProductInput {

@@ -2,6 +2,7 @@ import { useQuery, useLazyQuery, useMutation } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
 import { computed, ref, watch, type Ref } from 'vue'
 import type { Product, Category, ApiError } from '../types'
+import { useAuthStore } from '../stores/auth'
 
 // GraphQL Queries
 const GET_PRODUCTS = gql`
@@ -11,11 +12,13 @@ const GET_PRODUCTS = gql`
       name
       description
       productType
+      priceCents
       price {
         cents
         currency
         formatted
       }
+      currency
       photoUrl
       active
       createdAt
@@ -47,11 +50,13 @@ const CREATE_PRODUCT = gql`
         name
         description
         productType
+        priceCents
         price {
           cents
           currency
           formatted
         }
+        currency
         photoUrl
         active
         category {
@@ -177,7 +182,9 @@ export function useCreateProduct() {
   const createProduct = async (productData: any): Promise<{ success: boolean; product?: Product; errors?: ApiError[] }> => {
     try {
       const result = await createProductMutation({
-        input: productData
+        input: {
+          input: productData
+        }
       })
       
       if (result?.data?.createProduct?.errors?.length && result.data.createProduct.errors.length > 0) {
@@ -204,6 +211,126 @@ export function useCreateProduct() {
     createProduct,
     loading,
     error
+  }
+}
+
+
+export function useCreateProductWithPhoto() {
+  const isLoading = ref(false)
+  
+  const createProductWithPhoto = async (
+    productData: any, 
+    photoFile: File
+  ): Promise<{ 
+    success: boolean; 
+    product?: Product; 
+    errors?: ApiError[] 
+  }> => {
+    isLoading.value = true
+    
+    try {
+      // Prepare GraphQL multipart upload
+      const formData = new FormData()
+      
+      const operations = JSON.stringify({
+        query: `mutation CreateProduct($input: CreateProductInput!) { 
+          createProduct(input: $input) { 
+            product { 
+              id 
+              name 
+              description 
+              productType 
+              priceCents 
+              price { 
+                cents 
+                currency 
+                formatted 
+              } 
+              currency 
+              photoUrl 
+              active 
+              category { 
+                id 
+                name 
+              } 
+            } 
+            errors { 
+              message 
+              path 
+            } 
+          } 
+        }`,
+        variables: {
+          input: {
+            input: {
+              ...productData,
+              photo: null // Will be mapped via form data
+            }
+          }
+        }
+      })
+      
+      const map = JSON.stringify({
+        '0': ['variables.input.input.photo']
+      })
+      
+      formData.append('operations', operations)
+      formData.append('map', map)
+      formData.append('0', photoFile)
+      
+      // Get auth token for headers
+      const authStore = useAuthStore()
+      const headers: Record<string, string> = {}
+      
+      if (authStore.token) {
+        headers['Authorization'] = `Bearer ${authStore.token}`
+      }
+      
+      console.log('Sending multipart GraphQL request...')
+      const response = await fetch('http://localhost:3000/graphql', {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      if (result?.errors?.length > 0) {
+        return {
+          success: false,
+          errors: result.errors.map((err: any) => ({ message: err.message }))
+        }
+      }
+      
+      if (result?.data?.createProduct?.errors?.length > 0) {
+        return {
+          success: false,
+          errors: result.data.createProduct.errors
+        }
+      }
+      
+      return {
+        success: true,
+        product: result?.data?.createProduct?.product
+      }
+    } catch (err) {
+      console.error('Error creating product with photo:', err)
+      return {
+        success: false,
+        errors: [{ message: 'Failed to create product with photo. Please try again.' }]
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  return {
+    createProductWithPhoto,
+    loading: isLoading
   }
 }
 

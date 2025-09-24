@@ -208,7 +208,7 @@
                     <div v-if="cartStore.deliveryAddress.unitFloorBuilding">
                       {{ cartStore.deliveryAddress.unitFloorBuilding }}
                     </div>
-                    <div>{{ cartStore.deliveryAddress.displayAddress }}</div>
+                    <div>{{ formatDisplayAddress(cartStore.deliveryAddress) }}</div>
                   </div>
                 </div>
                 
@@ -495,6 +495,19 @@ function handlePaymentMethodSelected(methodCode: string, methodLabel: string, co
   // based on the selected payment method
 }
 
+function formatDisplayAddress(address: Address | null): string {
+  if (!address) return ''
+  
+  const parts = [
+    address.street,
+    address.barangay,
+    address.city,
+    address.province
+  ].filter(Boolean)
+  
+  return parts.join(', ')
+}
+
 async function handlePlaceOrder() {
   if (!canPlaceOrder.value) {
     globalStore.showError('Validation Error', 'Please complete all required information before placing the order')
@@ -506,8 +519,7 @@ async function handlePlaceOrder() {
       source: cartStore.isOnlineOrder ? 'ONLINE' : 'IN_STORE',
       items: cartStore.items.map(item => ({
         productId: item.productId,
-        quantity: item.quantity,
-        unitPriceCents: item.priceCents
+        quantity: item.quantity
       })),
       customer: {
         firstName: cartStore.customer!.firstName,
@@ -515,17 +527,15 @@ async function handlePlaceOrder() {
         email: cartStore.customer!.email,
         phone: cartStore.customer!.phone
       },
-      delivery: cartStore.deliveryAddress ? {
-        unitFloorBuilding: cartStore.deliveryAddress.unitFloorBuilding,
-        street: cartStore.deliveryAddress.street,
-        barangay: cartStore.deliveryAddress.barangay,
+      deliveryAddress: cartStore.deliveryAddress ? {
+        line1: cartStore.deliveryAddress.street,
+        line2: cartStore.deliveryAddress.unitFloorBuilding,
         city: cartStore.deliveryAddress.city,
-        province: cartStore.deliveryAddress.province,
-        postalCode: cartStore.deliveryAddress.postalCode
+        state: cartStore.deliveryAddress.province,
+        postalCode: cartStore.deliveryAddress.postalCode || '',
+        country: 'Philippines'
       } : undefined,
-      shippingMethodCode: cartStore.shippingMethod || undefined,
-      paymentMethodCode: cartStore.paymentMethod,
-      voucherCode: cartStore.voucherCode || undefined
+      paymentMethodCode: cartStore.paymentMethod
     }
 
     console.log('Placing order with data:', orderInput)

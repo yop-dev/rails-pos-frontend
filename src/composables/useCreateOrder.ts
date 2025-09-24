@@ -38,15 +38,15 @@ const CREATE_ORDER = gql`
           city
           province
           postalCode
-          fullAddress
-          displayAddress
+          landmark
+          remarks
         }
-        orderItems {
+        items {
           id
           quantity
           unitPriceCents
           totalPriceCents
-          productNameSnapshot
+          productName
           product {
             id
             name
@@ -114,7 +114,9 @@ export function useCreateOrder() {
       console.log('Creating order with input:', orderInput)
       
       const result = await createOrderMutation({
-        input: orderInput
+        input: {
+          input: orderInput
+        }
       })
       
       if (result?.data?.createOrder?.errors?.length > 0) {
@@ -244,7 +246,7 @@ export function useMockOrderCreation() {
         reference: 'ORD-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
         status: 'PENDING',
         source: orderInput.source,
-        subtotalCents: orderInput.items.reduce((sum, item) => sum + (item.unitPriceCents * item.quantity), 0),
+        subtotalCents: orderInput.items.reduce((sum, item) => sum + (15000 * item.quantity), 0), // Mock price
         shippingFeeCents: orderInput.source === 'ONLINE' ? 500 : 0,
         convenienceFeeCents: orderInput.paymentMethodCode === 'card' ? 100 : 0,
         discountCents: 0,
@@ -260,43 +262,31 @@ export function useMockOrderCreation() {
           phone: orderInput.customer.phone,
           fullName: `${orderInput.customer.firstName} ${orderInput.customer.lastName}`
         },
-        deliveryAddress: orderInput.delivery ? {
+        deliveryAddress: orderInput.deliveryAddress ? {
           id: 'address-' + Date.now(),
-          unitFloorBuilding: orderInput.delivery.unitFloorBuilding,
-          street: orderInput.delivery.street,
-          barangay: orderInput.delivery.barangay,
-          city: orderInput.delivery.city,
-          province: orderInput.delivery.province,
-          postalCode: orderInput.delivery.postalCode || '',
-          fullAddress: [
-            orderInput.delivery.unitFloorBuilding,
-            orderInput.delivery.street,
-            orderInput.delivery.barangay,
-            orderInput.delivery.city,
-            orderInput.delivery.province,
-            orderInput.delivery.postalCode
-          ].filter(Boolean).join(', '),
-          displayAddress: [
-            orderInput.delivery.street,
-            orderInput.delivery.barangay,
-            orderInput.delivery.city,
-            orderInput.delivery.province
-          ].join(', ')
+          unitFloorBuilding: orderInput.deliveryAddress.line2,
+          street: orderInput.deliveryAddress.line1,
+          barangay: 'Unknown',
+          city: orderInput.deliveryAddress.city,
+          province: orderInput.deliveryAddress.state || 'Unknown',
+          postalCode: orderInput.deliveryAddress.postalCode
         } : undefined,
-        orderItems: orderInput.items.map((item, index) => ({
-          id: 'item-' + index,
-          quantity: item.quantity,
-          unitPriceCents: item.unitPriceCents,
-          totalPriceCents: item.unitPriceCents * item.quantity,
-          productNameSnapshot: `Product ${item.productId}`,
+        items: orderInput.items.map((item, index) => {
+          const mockUnitPrice = 15000 // Mock price in cents
+          return {
+            id: 'item-' + index,
+            quantity: item.quantity,
+            unitPriceCents: mockUnitPrice,
+            totalPriceCents: mockUnitPrice * item.quantity,
+            productName: `Product ${item.productId}`,
           product: {
             id: item.productId,
             name: `Product ${item.productId}`,
             description: `Description for product ${item.productId}`,
             price: {
-              cents: item.unitPriceCents,
+              cents: mockUnitPrice,
               currency: 'PHP',
-              formatted: `₱${(item.unitPriceCents / 100).toFixed(2)}`
+              formatted: `₱${(mockUnitPrice / 100).toFixed(2)}`
             },
             productType: 'PHYSICAL' as const,
             photoUrl: null,
@@ -310,7 +300,8 @@ export function useMockOrderCreation() {
               productsCount: 10
             }
           }
-        }))
+          }
+        })
       }
       
       // Calculate total
@@ -353,13 +344,7 @@ function getPaymentMethodLabel(code: string): string {
 
 // Export default based on environment
 export default function useOrderCreation() {
-  // Use mock in development, real GraphQL in production
-  const isDevelopment = import.meta.env.DEV
-  
-  if (isDevelopment) {
-    console.log('Using mock order creation for development')
-    return useMockOrderCreation()
-  }
-  
+  // Always use real GraphQL - comment out mock for debugging
+  console.log('Using real GraphQL order creation')
   return useCreateOrder()
 }

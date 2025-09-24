@@ -152,6 +152,61 @@
       </form>
     </div>
     
+    <!-- Debug Section - Real Backend Data -->
+    <div class="mt-8 border-t border-gray-200 pt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="font-medium text-gray-900">Backend Customers (Debug)</h4>
+        <button
+          @click="showDebug = !showDebug"
+          class="text-sm text-primary-600 hover:text-primary-800 transition-colors"
+        >
+          {{ showDebug ? 'Hide' : 'Show' }} Debug
+        </button>
+      </div>
+      
+      <div v-if="showDebug" class="space-y-3">
+        <!-- Loading State -->
+        <div v-if="allCustomersLoading" class="text-sm text-blue-600">
+          🔄 Loading customers from backend...
+        </div>
+        
+        <!-- Error State -->
+        <div v-if="allCustomersError" class="text-sm text-red-600 p-3 bg-red-50 rounded-lg">
+          ❌ Error loading customers: {{ allCustomersError.message }}
+          <div class="mt-2">
+            <BaseButton size="sm" variant="secondary" @click="refetchAllCustomers()">
+              Retry
+            </BaseButton>
+          </div>
+        </div>
+        
+        <!-- Success State -->
+        <div v-else-if="!allCustomersLoading">
+          <p class="text-sm text-gray-600 mb-3">
+            ✅ Found {{ allCustomers.length }} customer(s) in backend:
+          </p>
+          
+          <div v-if="allCustomers.length === 0" class="text-sm text-yellow-600 p-3 bg-yellow-50 rounded-lg">
+            ⚠️ No customers found in database. Try creating a new customer or check if the backend has sample data.
+          </div>
+          
+          <div v-else class="grid grid-cols-1 gap-2">
+            <div 
+              v-for="customer in allCustomers" 
+              :key="customer.id"
+              class="bg-blue-50 p-3 rounded-lg text-sm border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+              @click="selectCustomer(customer)"
+            >
+              <div class="font-medium text-blue-900">{{ customer.fullName }}</div>
+              <div class="text-blue-700">Email: {{ customer.email }}</div>
+              <div class="text-blue-700">Phone: {{ formatPhoneNumber(customer.phone) }}</div>
+              <div class="text-xs text-blue-600 mt-1">Click to select this customer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Demo Section -->
     <div class="mt-8 border-t border-gray-200 pt-6">
       <div class="flex items-center justify-between mb-4">
@@ -203,6 +258,7 @@ const phoneSearch = ref('')
 const selectedCustomer = ref<Customer | null>(null)
 const showCreateForm = ref(false)
 const showDemo = ref(false)
+const showDebug = ref(false) // Keep debug hidden by default, but accessible
 
 const newCustomerForm = reactive<CustomerForm>({
   firstName: '',
@@ -225,7 +281,14 @@ const {
   emailResults: emailSearchResults,
   phoneResults: phoneSearchResults,
   emailLoading: emailSearchLoading,
-  phoneLoading: phoneSearchLoading
+  phoneLoading: phoneSearchLoading,
+  emailError,
+  phoneError,
+  // Debug data
+  allCustomers,
+  allCustomersLoading,
+  allCustomersError,
+  refetchAllCustomers
 } = useCustomerSearch()
 
 const { createCustomer, loading: creatingCustomer } = useCreateCustomer()

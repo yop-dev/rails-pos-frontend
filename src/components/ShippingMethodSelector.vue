@@ -84,7 +84,7 @@
         <div v-if="deliveryAddress.unitFloorBuilding" class="mb-1">
           {{ deliveryAddress.unitFloorBuilding }}
         </div>
-        <div>{{ deliveryAddress.displayAddress }}</div>
+        <div>{{ formatAddressDisplay(deliveryAddress) }}</div>
       </div>
     </div>
     
@@ -214,6 +214,19 @@ const selectedMethodDetails = computed(() => {
 })
 
 // Methods
+function formatAddressDisplay(address: Address | null): string {
+  if (!address) return ''
+  
+  const parts = [
+    address.street,
+    address.barangay,
+    address.city,
+    address.province
+  ].filter(Boolean)
+  
+  return parts.join(', ')
+}
+
 function handleMethodChange() {
   const method = selectedMethodDetails.value
   if (method) {

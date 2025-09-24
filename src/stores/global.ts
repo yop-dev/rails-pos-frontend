@@ -26,7 +26,7 @@ export const useGlobalStore = defineStore('global', () => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     const newNotification: Notification = {
       id,
-      duration: 5000, // Default 5 seconds
+      duration: 2000, // Default 2 seconds (much shorter)
       persistent: false,
       ...notification
     }
@@ -36,7 +36,18 @@ export const useGlobalStore = defineStore('global', () => {
     // Auto-remove non-persistent notifications
     if (!newNotification.persistent && newNotification.duration) {
       setTimeout(() => {
-        removeNotification(id)
+        // Add fade-out class before removing
+        const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
+        if (notificationElement) {
+          notificationElement.classList.remove('animate-fade-in')
+          notificationElement.classList.add('animate-fade-out')
+          // Wait for fade-out animation to complete before removing
+          setTimeout(() => {
+            removeNotification(id)
+          }, 250) // Match fade-out animation duration
+        } else {
+          removeNotification(id)
+        }
       }, newNotification.duration)
     }
 
@@ -54,7 +65,7 @@ export const useGlobalStore = defineStore('global', () => {
     notifications.value = []
   }
 
-  function showSuccess(title: string, message?: string, duration?: number) {
+  function showSuccess(title: string, message?: string, duration = 1500) {
     return showNotification({
       type: 'success',
       title,
@@ -69,11 +80,11 @@ export const useGlobalStore = defineStore('global', () => {
       title,
       message,
       persistent,
-      duration: persistent ? undefined : 8000 // Errors stay longer
+      duration: persistent ? undefined : 2500 // Errors stay slightly longer but still quick
     })
   }
 
-  function showWarning(title: string, message?: string, duration?: number) {
+  function showWarning(title: string, message?: string, duration = 2000) {
     return showNotification({
       type: 'warning',
       title,
@@ -82,7 +93,7 @@ export const useGlobalStore = defineStore('global', () => {
     })
   }
 
-  function showInfo(title: string, message?: string, duration?: number) {
+  function showInfo(title: string, message?: string, duration = 2000) {
     return showNotification({
       type: 'info',
       title,

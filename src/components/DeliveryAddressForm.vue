@@ -310,9 +310,7 @@ async function handleSubmit() {
       barangay: form.barangay,
       city: form.city,
       province: form.province,
-      postalCode: form.postalCode || '',
-      fullAddress: generateFullAddress(),
-      displayAddress: generateDisplayAddress()
+      postalCode: form.postalCode || ''
     }
     
     emit('address-updated', address)
@@ -326,25 +324,4 @@ async function handleSubmit() {
   }
 }
 
-function generateFullAddress(): string {
-  const parts = []
-  
-  if (form.unitFloorBuilding) {
-    parts.push(form.unitFloorBuilding)
-  }
-  
-  parts.push(form.street, form.barangay, form.city, form.province)
-  
-  if (form.postalCode) {
-    parts.push(form.postalCode)
-  }
-  
-  return parts.filter(Boolean).join(', ')
-}
-
-function generateDisplayAddress(): string {
-  // Shorter version for display
-  const parts = [form.street, form.barangay, form.city, form.province]
-  return parts.filter(Boolean).join(', ')
-}
 </script>

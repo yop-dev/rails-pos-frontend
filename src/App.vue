@@ -202,12 +202,16 @@ onMounted(() => {
     </div>
     
     <!-- Notification System -->
-    <div class="fixed top-4 right-4 z-50 space-y-2">
+    <div class="fixed top-4 z-50 w-full flex justify-end pr-4"
+         style="pointer-events: none;">
+      <div class="space-y-2 w-80 max-w-sm notification-responsive"
+           style="pointer-events: auto;">
       <div
         v-for="notification in globalStore.notifications"
         :key="notification.id"
+        :data-notification-id="notification.id"
         :class="[
-          'max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden transform transition-all duration-300',
+          'w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden transform transition-all duration-300',
           'animate-fade-in'
         ]"
       >
@@ -258,6 +262,48 @@ onMounted(() => {
           </div>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Notification animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.25s ease-in;
+}
+
+/* Responsive notification adjustments */
+@media (max-width: 640px) {
+  .notification-responsive {
+    width: calc(100vw - 2rem) !important;
+    max-width: none !important;
+  }
+}
+</style>
