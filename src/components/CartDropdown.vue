@@ -8,13 +8,7 @@
     >
       <div class="relative">
         <ShoppingCartIcon class="w-5 h-5 text-gray-600" />
-        <!-- Cart Badge -->
-        <div 
-          v-if="cartStore.totalItems > 0" 
-          class="absolute -top-2 -right-2 bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold"
-        >
-          {{ cartStore.totalItems > 99 ? '99+' : cartStore.totalItems }}
-        </div>
+        <!-- Cart Badge removed to avoid redundancy with text count -->
       </div>
       
       <div class="hidden sm:flex flex-col items-start">
