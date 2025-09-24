@@ -200,6 +200,22 @@
                   </div>
                 </div>
                 
+                <!-- Payment & Shipping Methods -->
+                <div class="mb-6">
+                  <h4 class="font-medium text-gray-900 mb-3">Payment & Delivery Methods</h4>
+                  <div class="text-sm text-gray-600 space-y-2">
+                    <div>
+                      <strong>Payment Method:</strong> {{ cartStore.paymentMethod ? getPaymentMethodLabel() : 'Not selected' }}
+                    </div>
+                    <div v-if="cartStore.isOnlineOrder && hasPhysicalProducts">
+                      <strong>Shipping Method:</strong> {{ cartStore.shippingMethod ? getShippingMethodLabel() : 'Not selected' }}
+                    </div>
+                    <div v-else-if="!cartStore.isOnlineOrder">
+                      <strong>Fulfillment:</strong> In-Store Pickup
+                    </div>
+                  </div>
+                </div>
+                
                 <!-- Order Items -->
                 <div class="mb-6">
                   <h4 class="font-medium text-gray-900 mb-3">Items ({{ cartStore.totalItems }})</h4>
@@ -531,7 +547,9 @@ function handleAddressCleared() {
 }
 
 function handleShippingMethodSelected(methodCode: string, methodLabel: string, feeCents: number) {
+  console.log('Shipping method selected:', { methodCode, methodLabel, feeCents })
   cartStore.setShippingMethod(methodCode)
+  console.log('Cart store shipping method after setting:', cartStore.shippingMethod)
   // The shipping fee will be automatically calculated by the cart store
   // based on the selected method and order type
 }
@@ -641,12 +659,26 @@ async function handlePlaceOrder() {
         city: cartStore.deliveryAddress.city,
         state: cartStore.deliveryAddress.province,
         postalCode: cartStore.deliveryAddress.postalCode || '',
-        country: 'Philippines'
+        country: 'Philippines',
+        barangay: cartStore.deliveryAddress.barangay
       } : undefined,
-      paymentMethodCode: cartStore.paymentMethod
+      paymentMethodCode: cartStore.paymentMethod,
+      // Add shipping method for online orders
+      shippingMethodCode: cartStore.isOnlineOrder && cartStore.shippingMethod ? cartStore.shippingMethod : undefined
     }
 
+    console.log('=== ORDER CREATION DEBUG ===')
+    console.log('Cart store shipping method:', cartStore.shippingMethod)
+    console.log('Cart store isOnlineOrder:', cartStore.isOnlineOrder)
+    console.log('hasPhysicalProducts:', hasPhysicalProducts.value)
+    console.log('Calculated shippingMethodCode:', cartStore.isOnlineOrder && cartStore.shippingMethod ? cartStore.shippingMethod : undefined)
+    console.log('Full cart store state:')
+    console.log('- paymentMethod:', cartStore.paymentMethod)
+    console.log('- shippingMethod:', cartStore.shippingMethod)
+    console.log('- deliveryAddress:', cartStore.deliveryAddress)
+    console.log('- isOnlineOrder:', cartStore.isOnlineOrder)
     console.log('Placing order with data:', orderInput)
+    console.log('===============================')
     
     const result = await createOrder(orderInput)
     

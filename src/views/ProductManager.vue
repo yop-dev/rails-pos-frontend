@@ -10,37 +10,14 @@
           </p>
         </div>
 
-        <!-- Tabs -->
-        <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-          <button
-            @click="activeTab = 'products'"
-            :class="[
-              'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              activeTab === 'products'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900',
-            ]"
-          >
-            Products
-          </button>
-          <button
-            @click="activeTab = 'checkout'"
-            :class="[
-              'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              activeTab === 'checkout'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900',
-            ]"
-          >
-            Checkout
-            <span
-              v-if="cartStore.totalItems > 0"
-              class="ml-1 bg-primary-500 text-white text-xs rounded-full px-2 py-0.5"
-            >
-              {{ cartStore.totalItems }}
-            </span>
-          </button>
-        </div>
+        <!-- Add Product Button -->
+        <BaseButton
+          @click="showCreateProductModal = true"
+          size="lg"
+          :left-icon="PlusIcon"
+        >
+          Add Product
+        </BaseButton>
       </div>
     </div>
 
@@ -424,6 +401,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Product Modal -->
+    <CreateProductModal
+      v-model="showCreateProductModal"
+      @success="handleProductCreated"
+    />
   </div>
 </template>
 
@@ -446,6 +429,7 @@ import {
 import { useCartStore } from "../stores/cart";
 import { useGlobalStore } from "../stores/global";
 import BaseButton from "../components/BaseButton.vue";
+import CreateProductModal from "../components/CreateProductModal.vue";
 import type { Product } from "../types";
 
 // Composables
@@ -464,10 +448,10 @@ const cartStore = useCartStore();
 const globalStore = useGlobalStore();
 
 // State
-const activeTab = ref("products");
 const selectedProduct = ref<Product | null>(null);
 const modalQuantity = ref(1);
 const voucherCode = ref("");
+const showCreateProductModal = ref(false);
 
 // Computed
 const filteredProducts = computed(() => {
@@ -588,6 +572,18 @@ function proceedToCheckout() {
     name: "CreateOrder",
     query: { tab: "customer" },
   });
+}
+
+function handleProductCreated(product: Product) {
+  showCreateProductModal.value = false;
+  
+  // Refresh the products list to show the new product
+  refetch();
+  
+  globalStore.showSuccess(
+    "Product Created",
+    `${product.name} has been added to your catalog`
+  );
 }
 
 // Initialize with active products only

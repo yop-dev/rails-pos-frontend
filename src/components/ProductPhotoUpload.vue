@@ -22,15 +22,15 @@
     >
       <!-- File Preview -->
       <div v-if="previewUrl" class="space-y-4">
-        <div class="relative inline-block">
+        <div style="text-align: center; display: flex; justify-content: center; align-items: center;">
+          <!-- Simple image with inline styles only -->
           <img 
             :src="previewUrl" 
             alt="Product preview"
-            class="mx-auto h-32 w-32 object-cover rounded-lg shadow-md"
+            @error="handleImageError"
+            @load="handleImageLoad"
+            style="width: 200px; height: 200px; object-fit: contain; background: white; border: 2px solid #ccc; display: block; margin: 0 auto;"
           />
-          <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
-            <PencilIcon class="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
-          </div>
         </div>
         
         <div class="space-y-2">
@@ -118,8 +118,7 @@ import { ref, computed } from 'vue'
 import { 
   PhotoIcon, 
   XMarkIcon, 
-  ArrowPathIcon, 
-  PencilIcon,
+  ArrowPathIcon,
   ExclamationCircleIcon 
 } from '@heroicons/vue/24/outline'
 import BaseButton from './BaseButton.vue'
@@ -151,6 +150,7 @@ const error = ref<string>('')
 const fileInput = ref<HTMLInputElement>()
 const previewUrl = ref<string>('')
 const selectedFile = ref<File | null>(props.modelValue)
+const imageLoadError = ref(false)
 
 // Computed
 const hasFile = computed(() => !!selectedFile.value)
@@ -211,19 +211,49 @@ function processFile(file: File) {
 }
 
 function createPreview(file: File) {
-  const reader = new FileReader()
-  
-  reader.onload = (e) => {
-    previewUrl.value = e.target?.result as string
+  // Try using URL.createObjectURL first as it's more reliable
+  try {
+    const objectUrl = URL.createObjectURL(file)
+    previewUrl.value = objectUrl
+    imageLoadError.value = false
+  } catch (error) {
+    // Fallback to FileReader
+    const reader = new FileReader()
+    
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      previewUrl.value = result
+      imageLoadError.value = false
+    }
+    
+    reader.onerror = (e) => {
+      error.value = 'Failed to read file'
+      imageLoadError.value = true
+    }
+    
+    reader.readAsDataURL(file)
   }
-  
-  reader.readAsDataURL(file)
+}
+
+function handleImageLoad(event: Event) {
+  imageLoadError.value = false
+}
+
+function handleImageError(event: Event) {
+  imageLoadError.value = true
+  error.value = 'Failed to display image preview'
 }
 
 function removeFile() {
+  // Clean up object URL to prevent memory leaks
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  
   selectedFile.value = null
   previewUrl.value = ''
   error.value = ''
+  imageLoadError.value = false
   
   if (fileInput.value) {
     fileInput.value.value = ''

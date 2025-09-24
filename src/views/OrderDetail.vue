@@ -207,13 +207,17 @@
         <div class="card p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment & Delivery</h3>
           <div class="space-y-3">
-            <div v-if="order.paymentMethodLabel">
+            <div>
               <div class="text-sm font-medium text-gray-700">Payment Method</div>
-              <div class="text-gray-900">{{ order.paymentMethodLabel }}</div>
+              <div class="text-gray-900">{{ order.paymentMethodLabel || 'Not specified' }}</div>
             </div>
-            <div v-if="order.shippingMethodLabel">
-              <div class="text-sm font-medium text-gray-700">Delivery Method</div>
-              <div class="text-gray-900">{{ order.shippingMethodLabel }}</div>
+            <div v-if="order.source === 'ONLINE'">
+              <div class="text-sm font-medium text-gray-700">Shipping Method</div>
+              <div class="text-gray-900">{{ order.shippingMethodLabel || 'Not specified' }}</div>
+            </div>
+            <div v-else>
+              <div class="text-sm font-medium text-gray-700">Fulfillment</div>
+              <div class="text-gray-900">In-Store Pickup</div>
             </div>
           </div>
         </div>

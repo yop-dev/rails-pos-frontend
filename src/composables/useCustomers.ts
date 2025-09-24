@@ -4,53 +4,7 @@ import { gql } from '@apollo/client/core'
 import type { Customer, CustomerForm, ApiError, MutationResponse } from '../types'
 
 // GraphQL Queries and Mutations
-const SEARCH_CUSTOMERS_BY_EMAIL = gql`
-  query SearchCustomersByEmail($search: CustomersSearchInput!) {
-    customers(search: $search) {
-      id
-      firstName
-      lastName
-      email
-      phone
-      fullName
-      lastCheckoutAddress {
-        id
-        street
-        unitFloorBuilding
-        barangay
-        city
-        province
-        postalCode
-        landmark
-        remarks
-      }
-    }
-  }
-`
-
-const SEARCH_CUSTOMERS_BY_PHONE = gql`
-  query SearchCustomersByPhone($search: CustomersSearchInput!) {
-    customers(search: $search) {
-      id
-      firstName
-      lastName
-      email
-      phone
-      fullName
-      lastCheckoutAddress {
-        id
-        street
-        unitFloorBuilding
-        barangay
-        city
-        province
-        postalCode
-        landmark
-        remarks
-      }
-    }
-  }
-`
+// Remove duplicate queries - now using unified SEARCH_CUSTOMERS query
 
 
 // Test query to get all customers - for debugging
@@ -67,6 +21,31 @@ const GET_ALL_CUSTOMERS = gql`
   }
 `
 
+// Unified search query for better performance
+const SEARCH_CUSTOMERS = gql`
+  query SearchCustomers($search: CustomersSearchInput!) {
+    customers(search: $search) {
+      id
+      firstName
+      lastName
+      email
+      phone
+      fullName
+      lastCheckoutAddress {
+        id
+        street
+        unitFloorBuilding
+        barangay
+        city
+        province
+        postalCode
+        landmark
+        remarks
+      }
+    }
+  }
+`
+
 // Customer Search Composable
 export function useCustomerSearch() {
   // Test query for all customers
@@ -77,54 +56,91 @@ export function useCustomerSearch() {
     refetch: refetchAllCustomers
   } = useQuery(GET_ALL_CUSTOMERS)
   
-  // Email search
+  // Unified search query
   const {
-    load: loadEmailSearch,
-    result: emailResult,
-    loading: emailLoading,
-    error: emailError
-  } = useLazyQuery(SEARCH_CUSTOMERS_BY_EMAIL)
+    load: loadSearch,
+    result: searchResult,
+    loading: searchLoading,
+    error: searchError
+  } = useLazyQuery(SEARCH_CUSTOMERS)
   
-  // Phone search
-  const {
-    load: loadPhoneSearch,
-    result: phoneResult,
-    loading: phoneLoading,
-    error: phoneError
-  } = useLazyQuery(SEARCH_CUSTOMERS_BY_PHONE)
-  
-  // Results
+  // Results and caching
   const emailResults = ref<Customer[]>([])
   const phoneResults = ref<Customer[]>([])
   const allCustomers = computed(() => allCustomersResult.value?.customers ?? [])
   
-  // Search functions
-  async function searchByEmail(email: string) {
-    if (!email || email.length < 3) {
-      emailResults.value = []
-      return
+  // Cache for search results (5 minute TTL)
+  const searchCache = ref<Map<string, { results: Customer[], timestamp: number }>>(new Map())
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+  
+  // Debounced search with abort controller
+  let currentSearchController: AbortController | null = null
+  
+  // Generic search function with caching and error handling
+  async function performSearch(searchType: 'email' | 'phone', searchValue: string): Promise<Customer[]> {
+    if (!searchValue || 
+        (searchType === 'email' && searchValue.length < 3) || 
+        (searchType === 'phone' && searchValue.length < 4)) {
+      return []
     }
     
+    // Check cache first
+    const cacheKey = `${searchType}:${searchValue.toLowerCase()}`
+    const cached = searchCache.value.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.results
+    }
+    
+    // Cancel previous search if still running
+    if (currentSearchController) {
+      currentSearchController.abort()
+    }
+    
+    currentSearchController = new AbortController()
+    
     try {
-      const result = await loadEmailSearch(SEARCH_CUSTOMERS_BY_EMAIL, { search: { email } })
-      emailResults.value = emailResult.value?.customers || []
+      const searchParams = searchType === 'email' 
+        ? { email: searchValue }
+        : { phone: searchValue }
+        
+      const result = await loadSearch(SEARCH_CUSTOMERS, 
+        { search: searchParams },
+        { context: { fetchOptions: { signal: currentSearchController.signal } } }
+      )
+      
+      const customers = searchResult.value?.customers || []
+      
+      // Cache the results
+      searchCache.value.set(cacheKey, {
+        results: customers,
+        timestamp: Date.now()
+      })
+      
+      return customers
+    } catch (error: any) {
+      // Don't log aborted requests as errors
+      if (error.name !== 'AbortError') {
+        console.error(`Error searching customers by ${searchType}:`, error)
+      }
+      return []
+    }
+  }
+  
+  // Search functions with improved debouncing
+  async function searchByEmail(email: string) {
+    try {
+      const results = await performSearch('email', email)
+      emailResults.value = results
     } catch (error) {
-      console.error('Error searching customers by email:', error)
       emailResults.value = []
     }
   }
   
   async function searchByPhone(phone: string) {
-    if (!phone || phone.length < 4) {
-      phoneResults.value = []
-      return
-    }
-    
     try {
-      const result = await loadPhoneSearch(SEARCH_CUSTOMERS_BY_PHONE, { search: { phone } })
-      phoneResults.value = phoneResult.value?.customers || []
+      const results = await performSearch('phone', phone)
+      phoneResults.value = results
     } catch (error) {
-      console.error('Error searching customers by phone:', error)
       phoneResults.value = []
     }
   }
@@ -134,15 +150,30 @@ export function useCustomerSearch() {
     console.log('❗ All customers error:', allCustomersError.value)
   }
   
+  // Clear cache periodically to prevent memory leaks
+  const clearOldCache = () => {
+    const now = Date.now()
+    searchCache.value.forEach((value, key) => {
+      if (now - value.timestamp > CACHE_TTL) {
+        searchCache.value.delete(key)
+      }
+    })
+  }
+  
+  // Clear cache every 10 minutes
+  setInterval(clearOldCache, 10 * 60 * 1000)
+  
   return {
     searchByEmail,
     searchByPhone,
     emailResults,
     phoneResults,
-    emailLoading,
-    phoneLoading,
-    emailError,
-    phoneError,
+    emailLoading: searchLoading,
+    phoneLoading: searchLoading, // Both use the same unified query
+    emailError: searchError,
+    phoneError: searchError, // Both use the same unified query
+    // Search utilities
+    clearCache: () => searchCache.value.clear(),
     // Debug data
     allCustomers,
     allCustomersLoading,

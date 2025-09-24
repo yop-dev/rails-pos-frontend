@@ -172,6 +172,7 @@ export interface CreateOrderInput {
   customerId?: string
   deliveryAddress?: AddressInput
   paymentMethodCode: string
+  shippingMethodCode?: string
   notes?: string
 }
 
@@ -194,6 +195,7 @@ export interface AddressInput {
   state?: string
   postalCode: string
   country: string
+  barangay?: string
 }
 
 export interface CreateProductInput {

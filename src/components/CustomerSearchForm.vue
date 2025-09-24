@@ -16,19 +16,41 @@
           
           <!-- Email Search Results Dropdown -->
           <div 
-            v-if="emailSearchResults.length > 0"
+            v-if="emailSearchResults.length > 0 || emailSearchLoading || emailError"
             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
-            <button
-              v-for="customer in emailSearchResults"
-              :key="customer.id"
-              @click="selectCustomer(customer)"
-              class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
-            >
-              <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
-              <div class="text-sm text-gray-600">{{ customer.email }}</div>
-              <div class="text-xs text-gray-500">{{ formatPhoneNumber(customer.phone) }}</div>
-            </button>
+            <!-- Loading State -->
+            <div v-if="emailSearchLoading" class="px-4 py-3 text-center text-gray-500">
+              <div class="flex items-center justify-center space-x-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                <span class="text-sm">Searching customers...</span>
+              </div>
+            </div>
+            
+            <!-- Error State -->
+            <div v-else-if="emailError" class="px-4 py-3 text-center">
+              <div class="text-sm text-red-600 mb-2">Search failed</div>
+              <button 
+                @click="handleEmailSearch()"
+                class="text-xs text-primary-600 hover:text-primary-800 underline"
+              >
+                Try again
+              </button>
+            </div>
+            
+            <!-- Results -->
+            <template v-else-if="emailSearchResults.length > 0">
+              <button
+                v-for="customer in emailSearchResults"
+                :key="customer.id"
+                @click="selectCustomer(customer)"
+                class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
+              >
+                <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
+                <div class="text-sm text-gray-600">{{ customer.email }}</div>
+                <div class="text-xs text-gray-500">{{ formatPhoneNumber(customer.phone) }}</div>
+              </button>
+            </template>
           </div>
         </div>
 
@@ -45,19 +67,41 @@
           
           <!-- Phone Search Results Dropdown -->
           <div 
-            v-if="phoneSearchResults.length > 0"
+            v-if="phoneSearchResults.length > 0 || phoneSearchLoading || phoneError"
             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
-            <button
-              v-for="customer in phoneSearchResults"
-              :key="customer.id"
-              @click="selectCustomer(customer)"
-              class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
-            >
-              <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
-              <div class="text-sm text-gray-600">{{ formatPhoneNumber(customer.phone) }}</div>
-              <div class="text-xs text-gray-500">{{ customer.email }}</div>
-            </button>
+            <!-- Loading State -->
+            <div v-if="phoneSearchLoading" class="px-4 py-3 text-center text-gray-500">
+              <div class="flex items-center justify-center space-x-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                <span class="text-sm">Searching customers...</span>
+              </div>
+            </div>
+            
+            <!-- Error State -->
+            <div v-else-if="phoneError" class="px-4 py-3 text-center">
+              <div class="text-sm text-red-600 mb-2">Search failed</div>
+              <button 
+                @click="handlePhoneSearch()"
+                class="text-xs text-primary-600 hover:text-primary-800 underline"
+              >
+                Try again
+              </button>
+            </div>
+            
+            <!-- Results -->
+            <template v-else-if="phoneSearchResults.length > 0">
+              <button
+                v-for="customer in phoneSearchResults"
+                :key="customer.id"
+                @click="selectCustomer(customer)"
+                class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
+              >
+                <div class="font-medium text-gray-900">{{ customer.fullName }}</div>
+                <div class="text-sm text-gray-600">{{ formatPhoneNumber(customer.phone) }}</div>
+                <div class="text-xs text-gray-500">{{ customer.email }}</div>
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -157,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onUnmounted } from 'vue'
 import { MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { useCustomerSearch, useCreateCustomer, useCustomerUtils } from '../composables/useCustomers'
 import { useGlobalStore } from '../stores/global'
@@ -216,27 +260,53 @@ const isFormValid = computed(() =>
 )
 
 
-// Methods
-let emailSearchTimeout: number
+// Methods with improved debouncing
+let emailSearchTimeout: NodeJS.Timeout | null = null
 function handleEmailSearch() {
-  clearTimeout(emailSearchTimeout)
-  
-  if (emailSearch.value.length > 2) {
-    emailSearchTimeout = setTimeout(() => {
-      searchByEmail(emailSearch.value)
-    }, 300)
+  // Clear existing timeout
+  if (emailSearchTimeout) {
+    clearTimeout(emailSearchTimeout)
   }
+  
+  // Clear results immediately if search is too short
+  if (emailSearch.value.length < 3) {
+    emailSearchResults.value = []
+    return
+  }
+  
+  // Debounce with longer timeout for better UX
+  emailSearchTimeout = setTimeout(async () => {
+    try {
+      await searchByEmail(emailSearch.value)
+    } catch (error) {
+      console.error('Email search failed:', error)
+      globalStore.showError('Search Failed', 'Unable to search customers. Please try again.')
+    }
+  }, 600) // Increased from 300ms to 600ms
 }
 
-let phoneSearchTimeout: number
+let phoneSearchTimeout: NodeJS.Timeout | null = null
 function handlePhoneSearch() {
-  clearTimeout(phoneSearchTimeout)
-  
-  if (phoneSearch.value.length > 3) {
-    phoneSearchTimeout = setTimeout(() => {
-      searchByPhone(phoneSearch.value)
-    }, 300)
+  // Clear existing timeout
+  if (phoneSearchTimeout) {
+    clearTimeout(phoneSearchTimeout)
   }
+  
+  // Clear results immediately if search is too short
+  if (phoneSearch.value.length < 4) {
+    phoneSearchResults.value = []
+    return
+  }
+  
+  // Debounce with longer timeout for better UX
+  phoneSearchTimeout = setTimeout(async () => {
+    try {
+      await searchByPhone(phoneSearch.value)
+    } catch (error) {
+      console.error('Phone search failed:', error)
+      globalStore.showError('Search Failed', 'Unable to search customers. Please try again.')
+    }
+  }, 600) // Increased from 300ms to 600ms
 }
 
 function selectCustomer(customer: Customer) {
@@ -302,6 +372,16 @@ function resetForm() {
     formErrors[key as keyof typeof formErrors] = ''
   })
 }
+
+// Cleanup timeouts on component unmount
+onUnmounted(() => {
+  if (emailSearchTimeout) {
+    clearTimeout(emailSearchTimeout)
+  }
+  if (phoneSearchTimeout) {
+    clearTimeout(phoneSearchTimeout)
+  }
+})
 
 // Icons for loading states
 const SpinnerIcon = {
