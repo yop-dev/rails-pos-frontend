@@ -14,6 +14,7 @@
         option-value="value"
         option-label="label"
         @option-selected="handleRegionSelected"
+        @custom-value-used="handleCustomRegionUsed"
       />
       
       <!-- Province (Required) -->
@@ -29,6 +30,7 @@
         option-value="value"
         option-label="label"
         @option-selected="handleProvinceSelected"
+        @custom-value-used="handleCustomProvinceUsed"
       />
       
       <!-- City/Municipality (Required) -->
@@ -44,21 +46,22 @@
         option-value="value"
         option-label="label"
         @option-selected="handleCitySelected"
+        @custom-value-used="handleCustomCityUsed"
       />
       
-      <!-- Barangay (Required) -->
+      <!-- Barangay (Optional) -->
       <SearchableDropdown
         v-model="barangayCode"
         :options="barangays"
         label="Barangay"
-        placeholder="Select or search barangay"
-        required
+        placeholder="Select or search barangay (optional if street address is detailed)"
         :searchable="true"
         :disabled="!cityCode"
         :error="formErrors.barangay"
         option-value="value"
         option-label="label"
         @option-selected="handleBarangaySelected"
+        @custom-value-used="handleCustomBarangayUsed"
       />
       
       <!-- Street Address (Required) -->
@@ -268,13 +271,18 @@ const sampleAddresses = [
 ]
 
 // Computed
-const isFormValid = computed(() => 
-  form.street && 
-  regionCode.value && 
-  provinceCode.value && 
-  cityCode.value && 
-  barangayCode.value
-)
+const isFormValid = computed(() => {
+  // Basic requirements: street and region must be filled
+  const hasBasicInfo = form.street && regionCode.value
+  
+  // Address hierarchy: we need at least region -> province -> city
+  // Barangay can be optional if user provides detailed street address
+  const hasMinimumAddress = regionCode.value && provinceCode.value && cityCode.value
+  
+  // Allow form to be valid if we have the minimum required fields
+  // This is more flexible than requiring all 4 levels
+  return hasBasicInfo && hasMinimumAddress
+})
 
 const addressPreview = computed(() => {
   if (!isFormValid.value) return ''
@@ -305,11 +313,31 @@ watch([regionCode, provinceCode, cityCode, barangayCode], () => {
   setBarangay(barangayCode.value)
   
   // Update form with readable names
-  const names = getAddressNames()
-  form.province = names.province
-  form.city = names.city
-  form.barangay = names.barangay
+  updateFormAddressNames()
 })
+
+// Function to update form with proper address names (including custom entries)
+function updateFormAddressNames() {
+  const names = getAddressNames()
+  
+  // Handle custom entries by extracting the label from the code
+  form.province = names.province || extractCustomEntryLabel(provinceCode.value)
+  form.city = names.city || extractCustomEntryLabel(cityCode.value) 
+  form.barangay = names.barangay || extractCustomEntryLabel(barangayCode.value)
+}
+
+// Extract readable label from custom entry codes
+function extractCustomEntryLabel(code: string): string {
+  if (!code) return ''
+  if (code.startsWith('CUSTOM_')) {
+    // Extract the original text from custom codes like 'CUSTOM_1234_MY_CITY'
+    const parts = code.split('_')
+    if (parts.length >= 3) {
+      return parts.slice(2).join(' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+    }
+  }
+  return ''
+}
 
 // Methods
 function populateForm(address: Address) {
@@ -398,9 +426,12 @@ async function handleSubmit() {
     hasErrors = true
   }
   
-  if (!barangayCode.value) {
-    formErrors.barangay = 'Barangay is required'
-    hasErrors = true
+  // Make barangay optional if we have detailed street address
+  // This provides more flexibility for areas where specific barangay info isn't available
+  if (!barangayCode.value && !form.street.includes(',') && form.street.length < 20) {
+    // Only require barangay if street address seems insufficient
+    formErrors.barangay = 'Barangay is recommended for better delivery accuracy'
+    // Don't set hasErrors = true here, just show a warning
   }
   
   if (hasErrors) {
@@ -415,6 +446,7 @@ async function handleSubmit() {
     await new Promise(resolve => setTimeout(resolve, 500))
     
     // Create address object with both readable names and codes
+    // Handle both predefined and custom entries
     const addressNames = getAddressNames()
     const addressCodes = getAddressCodes()
     
@@ -422,15 +454,15 @@ async function handleSubmit() {
       id: props.initialAddress?.id || 'new-' + Date.now(),
       unitFloorBuilding: form.unitFloorBuilding || undefined,
       street: form.street,
-      barangay: addressNames.barangay,
-      city: addressNames.city,
-      province: addressNames.province,
+      barangay: form.barangay || addressNames.barangay || 'N/A',
+      city: form.city || addressNames.city,
+      province: form.province || addressNames.province,
       postalCode: form.postalCode || '',
-      // Store codes for future reference
+      // Store codes for future reference (including custom codes)
       regionCode: addressCodes.region,
       provinceCode: addressCodes.province,
       cityCode: addressCodes.city,
-      barangayCode: addressCodes.barangay,
+      barangayCode: addressCodes.barangay || 'N/A',
       region: addressNames.region
     } as any
     
@@ -470,6 +502,33 @@ function handleCitySelected() {
 }
 
 function handleBarangaySelected() {
+  // Nothing to clear
+}
+
+// Custom value handlers
+function handleCustomRegionUsed(value: string) {
+  console.log('Custom region used:', value)
+  // Clear dependent fields when region changes
+  provinceCode.value = ''
+  cityCode.value = ''
+  barangayCode.value = ''
+}
+
+function handleCustomProvinceUsed(value: string) {
+  console.log('Custom province used:', value)
+  // Clear dependent fields when province changes
+  cityCode.value = ''
+  barangayCode.value = ''
+}
+
+function handleCustomCityUsed(value: string) {
+  console.log('Custom city used:', value)
+  // Clear barangay when city changes
+  barangayCode.value = ''
+}
+
+function handleCustomBarangayUsed(value: string) {
+  console.log('Custom barangay used:', value)
   // Nothing to clear
 }
 

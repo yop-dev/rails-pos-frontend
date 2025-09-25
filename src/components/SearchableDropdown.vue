@@ -27,8 +27,18 @@
         autocomplete="off"
       />
       
-      <!-- Dropdown Icon -->
+      <!-- Icons -->
       <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        <!-- Custom Entry Indicator -->
+        <div v-if="isCustomEntry" class="mr-2 flex items-center">
+          <div class="flex items-center space-x-1">
+            <svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span class="text-xs text-blue-600 font-medium">Custom</span>
+          </div>
+        </div>
+        <!-- Dropdown Icon -->
         <ChevronUpDownIcon class="h-4 w-4 text-gray-400" />
       </div>
     </div>
@@ -61,14 +71,27 @@
         </button>
       </template>
       
-      <!-- No Results -->
-      <div v-else-if="!loading && searchQuery.trim() && filteredOptions.length === 0" class="px-3 py-2 text-sm text-gray-500">
-        No results found for "{{ searchQuery.trim() }}"
+      <!-- No Results with Custom Entry Option -->
+      <div v-else-if="!loading && searchQuery.trim() && filteredOptions.length === 0">
+        <div class="px-3 py-2 text-sm text-gray-500 border-b border-gray-200">
+          No results found for "{{ searchQuery.trim() }}"
+        </div>
+        <button
+          class="w-full text-left px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 transition-colors border-l-2 border-primary-200"
+          @click="useCustomValue"
+        >
+          <span class="flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Use "{{ searchQuery.trim() }}" as custom entry
+          </span>
+        </button>
       </div>
       
       <!-- Empty State (no search, no options) -->
       <div v-else-if="!loading && !searchQuery.trim() && props.options.length === 0" class="px-3 py-2 text-sm text-gray-500">
-        No options available
+        No options available. Type to enter custom value.
       </div>
     </div>
     
@@ -109,6 +132,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'option-selected': [option: Option]
+  'custom-value-used': [value: string]
   'search': [query: string]
 }>()
 
@@ -152,6 +176,10 @@ const filteredOptions = computed(() => {
 const selectedOption = computed(() => {
   if (!props.modelValue) return null
   return props.options.find(option => getOptionValue(option) === props.modelValue) || null
+})
+
+const isCustomEntry = computed(() => {
+  return props.modelValue && props.modelValue.startsWith('CUSTOM_')
 })
 
 // Watchers
@@ -251,6 +279,9 @@ function handleKeydown(event: KeyboardEvent) {
       event.preventDefault()
       if (showDropdown.value && highlightedIndex.value >= 0) {
         selectOption(filteredOptions.value[highlightedIndex.value])
+      } else if (showDropdown.value && searchQuery.value.trim() && filteredOptions.value.length === 0) {
+        // Use custom value if no options are available but there's a search query
+        useCustomValue()
       }
       break
       
@@ -272,6 +303,28 @@ function selectOption(option: Option) {
   
   emit('update:modelValue', value)
   emit('option-selected', option)
+  
+  inputRef.value?.blur()
+}
+
+function useCustomValue() {
+  const customValue = searchQuery.value.trim()
+  if (!customValue) return
+  
+  // Create a custom option object
+  const customOption: Option = {
+    value: `CUSTOM_${Date.now()}_${customValue.replace(/\s+/g, '_').toUpperCase()}`,
+    label: customValue,
+    code: `CUSTOM_${customValue.replace(/\s+/g, '_').toUpperCase()}`,
+    isCustom: true
+  }
+  
+  showDropdown.value = false
+  highlightedIndex.value = -1
+  
+  emit('update:modelValue', customOption.value)
+  emit('option-selected', customOption)
+  emit('custom-value-used', customValue)
   
   inputRef.value?.blur()
 }
