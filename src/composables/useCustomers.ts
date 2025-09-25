@@ -7,10 +7,10 @@ import type { Customer, CustomerForm, ApiError, MutationResponse } from '../type
 // Remove duplicate queries - now using unified SEARCH_CUSTOMERS query
 
 
-// Test query to get all customers - for debugging
+// Query to get all customers using the new allCustomers field
 const GET_ALL_CUSTOMERS = gql`
   query GetAllCustomers {
-    customers(search: { term: "" }) {
+    allCustomers {
       id
       firstName
       lastName
@@ -33,7 +33,7 @@ export function useCustomerSearch() {
     refetch: refetchAllCustomers
   } = useQuery(GET_ALL_CUSTOMERS)
   
-  const allCustomers = computed(() => allCustomersResult.value?.customers ?? [])
+  const allCustomers = computed(() => allCustomersResult.value?.allCustomers ?? [])
   
   // Search state
   const emailSearchQuery = ref('')

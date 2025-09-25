@@ -3,35 +3,37 @@
     <!-- Search Section -->
     <div class="space-y-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Email Search -->
+        <!-- Email Search with Dropdown -->
         <div class="relative">
           <BaseInput
             v-model="emailSearch"
             label="Search by Email"
             type="email"
-            placeholder="customer@example.com"
+            placeholder="Search customers by email or name..."
             @input="handleEmailSearch"
+            @focus="handleEmailInputFocus"
+            @blur="handleEmailInputBlur"
             :right-icon="emailSearchLoading ? SpinnerIcon : MagnifyingGlassIcon"
           />
           
           <!-- Email Search Results Dropdown -->
           <div 
-            v-if="emailSearchResults.length > 0 || emailSearchLoading || emailError"
+            v-if="shouldShowDropdown || emailSearchLoading || emailError"
             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
             <!-- Loading State -->
             <div v-if="emailSearchLoading" class="px-4 py-3 text-center text-gray-500">
               <div class="flex items-center justify-center space-x-2">
                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                <span class="text-sm">Searching customers...</span>
+                <span class="text-sm">Loading customers...</span>
               </div>
             </div>
             
             <!-- Error State -->
             <div v-else-if="emailError" class="px-4 py-3 text-center">
-              <div class="text-sm text-red-600 mb-2">Search failed</div>
+              <div class="text-sm text-red-600 mb-2">Failed to load customers</div>
               <button 
-                @click="handleEmailSearch()"
+                @click="refetchAllCustomers()"
                 class="text-xs text-primary-600 hover:text-primary-800 underline"
               >
                 Try again
@@ -39,9 +41,12 @@
             </div>
             
             <!-- Results -->
-            <template v-else-if="emailSearchResults.length > 0">
+            <template v-else-if="filteredCustomers.length > 0">
+              <div class="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+                {{ filteredCustomers.length }} of {{ allCustomers.length }} customers
+              </div>
               <button
-                v-for="customer in emailSearchResults"
+                v-for="customer in filteredCustomers"
                 :key="customer.id"
                 @click="selectCustomer(customer)"
                 class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
@@ -51,6 +56,11 @@
                 <div class="text-xs text-gray-500">{{ formatPhoneNumber(customer.phone) }}</div>
               </button>
             </template>
+            
+            <!-- No Results -->
+            <div v-else class="px-4 py-3 text-center text-gray-500 text-sm">
+              No customers found {{ emailSearch ? `matching "${emailSearch}"` : '' }}
+            </div>
           </div>
         </div>
 
@@ -60,29 +70,31 @@
             v-model="phoneSearch"
             label="Search by Phone"
             type="tel"
-            placeholder="+639171234567"
+            placeholder="Search customers by phone or name..."
             @input="handlePhoneSearch"
+            @focus="handlePhoneInputFocus"
+            @blur="handlePhoneInputBlur"
             :right-icon="phoneSearchLoading ? SpinnerIcon : MagnifyingGlassIcon"
           />
           
           <!-- Phone Search Results Dropdown -->
           <div 
-            v-if="phoneSearchResults.length > 0 || phoneSearchLoading || phoneError"
+            v-if="shouldShowPhoneDropdown || phoneSearchLoading || phoneError"
             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
             <!-- Loading State -->
             <div v-if="phoneSearchLoading" class="px-4 py-3 text-center text-gray-500">
               <div class="flex items-center justify-center space-x-2">
                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                <span class="text-sm">Searching customers...</span>
+                <span class="text-sm">Loading customers...</span>
               </div>
             </div>
             
             <!-- Error State -->
             <div v-else-if="phoneError" class="px-4 py-3 text-center">
-              <div class="text-sm text-red-600 mb-2">Search failed</div>
+              <div class="text-sm text-red-600 mb-2">Failed to load customers</div>
               <button 
-                @click="handlePhoneSearch()"
+                @click="refetchAllCustomers()"
                 class="text-xs text-primary-600 hover:text-primary-800 underline"
               >
                 Try again
@@ -90,9 +102,12 @@
             </div>
             
             <!-- Results -->
-            <template v-else-if="phoneSearchResults.length > 0">
+            <template v-else-if="filteredPhoneCustomers.length > 0">
+              <div class="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+                {{ filteredPhoneCustomers.length }} of {{ allCustomers.length }} customers
+              </div>
               <button
-                v-for="customer in phoneSearchResults"
+                v-for="customer in filteredPhoneCustomers"
                 :key="customer.id"
                 @click="selectCustomer(customer)"
                 class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-primary-50"
@@ -102,6 +117,11 @@
                 <div class="text-xs text-gray-500">{{ customer.email }}</div>
               </button>
             </template>
+            
+            <!-- No Results -->
+            <div v-else class="px-4 py-3 text-center text-gray-500 text-sm">
+              No customers found {{ phoneSearch ? `matching "${phoneSearch}"` : '' }}
+            </div>
           </div>
         </div>
       </div>
@@ -220,6 +240,8 @@ const emailSearch = ref('')
 const phoneSearch = ref('')
 const selectedCustomer = ref<Customer | null>(null)
 const showCreateForm = ref(false)
+const isEmailInputFocused = ref(false)
+const isPhoneInputFocused = ref(false)
 
 const newCustomerForm = reactive<CustomerForm>({
   firstName: '',
@@ -245,7 +267,9 @@ const {
   phoneLoading: phoneSearchLoading,
   emailError,
   phoneError,
-  clearAllResults
+  clearAllResults,
+  allCustomers,
+  refetchAllCustomers
 } = useCustomerSearch()
 
 const { createCustomer, loading: creatingCustomer } = useCreateCustomer()
@@ -259,6 +283,52 @@ const isFormValid = computed(() =>
   newCustomerForm.email && 
   newCustomerForm.phone
 )
+
+// Filtered customers based on email search input
+const filteredCustomers = computed(() => {
+  if (!emailSearch.value || emailSearch.value.length < 2) {
+    // Show all customers when no search or search is too short
+    return [...allCustomers.value].sort((a, b) => 
+      a.fullName.localeCompare(b.fullName)
+    )
+  }
+  
+  const query = emailSearch.value.toLowerCase().trim()
+  return allCustomers.value.filter(customer => 
+    customer.email.toLowerCase().includes(query) ||
+    customer.fullName.toLowerCase().includes(query)
+  ).sort((a, b) => a.fullName.localeCompare(b.fullName))
+})
+
+// Filtered customers based on phone search input
+const filteredPhoneCustomers = computed(() => {
+  if (!phoneSearch.value || phoneSearch.value.length < 2) {
+    // Show all customers when no search or search is too short
+    return [...allCustomers.value].sort((a, b) => 
+      a.fullName.localeCompare(b.fullName)
+    )
+  }
+  
+  const query = phoneSearch.value.toLowerCase().trim()
+  return allCustomers.value.filter(customer => 
+    customer.phone?.toLowerCase().includes(query) ||
+    customer.fullName.toLowerCase().includes(query)
+  ).sort((a, b) => a.fullName.localeCompare(b.fullName))
+})
+
+// Show dropdown when input is focused and has results
+const shouldShowDropdown = computed(() => {
+  return isEmailInputFocused.value && 
+         filteredCustomers.value.length > 0 && 
+         !selectedCustomer.value
+})
+
+// Show phone dropdown when phone input is focused and has results
+const shouldShowPhoneDropdown = computed(() => {
+  return isPhoneInputFocused.value && 
+         filteredPhoneCustomers.value.length > 0 && 
+         !selectedCustomer.value
+})
 
 
 // Methods with improved debouncing
@@ -304,10 +374,35 @@ function handlePhoneSearch() {
   }, 600) // Increased from 300ms to 600ms
 }
 
+// Focus/blur handlers for dropdown visibility
+function handleEmailInputFocus() {
+  isEmailInputFocused.value = true
+}
+
+function handleEmailInputBlur() {
+  // Delay hiding to allow clicking on dropdown items
+  setTimeout(() => {
+    isEmailInputFocused.value = false
+  }, 200)
+}
+
+function handlePhoneInputFocus() {
+  isPhoneInputFocused.value = true
+}
+
+function handlePhoneInputBlur() {
+  // Delay hiding to allow clicking on dropdown items
+  setTimeout(() => {
+    isPhoneInputFocused.value = false
+  }, 200)
+}
+
 function selectCustomer(customer: Customer) {
   selectedCustomer.value = customer
   emailSearch.value = ''
   phoneSearch.value = ''
+  isEmailInputFocused.value = false // Hide email dropdown immediately
+  isPhoneInputFocused.value = false // Hide phone dropdown immediately
   // Clear search results using the composable function
   clearAllResults()
   
@@ -324,6 +419,8 @@ function clearCustomerSelection() {
   selectedCustomer.value = null
   emailSearch.value = ''
   phoneSearch.value = ''
+  isEmailInputFocused.value = false
+  isPhoneInputFocused.value = false
   clearAllResults()
   showCreateForm.value = false
   resetForm()

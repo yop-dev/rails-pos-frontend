@@ -4,9 +4,9 @@
     <div class="bg-white border-b border-gray-200 px-6 py-4">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Product Catalog</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Product Manager</h1>
           <p class="text-gray-600 mt-1">
-            Browse and add products to your order
+            Manage your product catalog
           </p>
         </div>
 
@@ -22,9 +22,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
-      <!-- Left Side: Product Catalog -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Category Buttons -->
         <div class="bg-white border-b border-gray-200 px-6 py-4">
           <div class="flex flex-wrap gap-2">
@@ -116,18 +114,23 @@
                 <h3 class="font-medium text-gray-900 mb-1 line-clamp-2">
                   {{ product.name }}
                 </h3>
-                <p class="text-lg font-bold text-primary-600 mb-2">
+                <p class="text-lg font-bold text-primary-600">
                   {{ product.price.formatted }}
                 </p>
-
-                <!-- Quick Add to Cart -->
-                <button
-                  @click.stop="quickAddToCart(product)"
-                  class="w-full bg-primary-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
-                >
-                  <PlusIcon class="h-4 w-4 inline mr-1" />
-                  Add to Cart
-                </button>
+                
+                <!-- Product Status -->
+                <div class="mt-2">
+                  <span 
+                    :class="[
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                      product.active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    ]"
+                  >
+                    {{ product.active ? 'Active' : 'Inactive' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -143,183 +146,6 @@
             </p>
           </div>
         </div>
-      </div>
-
-      <!-- Right Side: Cart Section -->
-      <div class="w-96 bg-white border-l border-gray-200 flex flex-col">
-        <!-- Cart Header -->
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Shopping Cart</h2>
-          <p class="text-sm text-gray-600">{{ cartStore.totalItems }} items</p>
-        </div>
-
-        <!-- Cart Items -->
-        <div class="flex-1 overflow-y-auto px-6 py-4">
-          <div v-if="cartStore.isEmpty" class="text-center py-8">
-            <ShoppingCartIcon class="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p class="text-gray-500">Your cart is empty</p>
-            <p class="text-sm text-gray-400 mt-1">
-              Add products to get started
-            </p>
-          </div>
-
-          <div v-else class="space-y-4">
-            <div
-              v-for="item in cartStore.items"
-              :key="item.productId"
-              class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg"
-            >
-              <!-- Product Image -->
-              <div
-                class="w-12 h-12 bg-gray-200 rounded-md overflow-hidden flex-shrink-0"
-              >
-                <img
-                  v-if="item.photoUrl"
-                  :src="item.photoUrl"
-                  :alt="item.name"
-                  class="w-full h-full object-cover"
-                />
-                <div
-                  v-else
-                  class="w-full h-full flex items-center justify-center"
-                >
-                  <CubeIcon class="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-
-              <!-- Item Info -->
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ item.name }}
-                </p>
-                <p class="text-sm text-gray-600">
-                  ₱{{ formatPrice(item.priceCents) }}
-                </p>
-
-                <!-- Quantity Controls -->
-                <div class="flex items-center space-x-2 mt-2">
-                  <button
-                    @click="decreaseQuantity(item.productId)"
-                    class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                    :disabled="item.quantity <= 1"
-                  >
-                    <MinusIcon class="h-3 w-3" />
-                  </button>
-                  <span class="text-sm font-medium w-6 text-center">{{
-                    item.quantity
-                  }}</span>
-                  <button
-                    @click="increaseQuantity(item.productId)"
-                    class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                  >
-                    <PlusIcon class="h-3 w-3" />
-                  </button>
-                  <button
-                    @click="removeFromCart(item.productId)"
-                    class="ml-2 text-red-500 hover:text-red-700"
-                  >
-                    <TrashIcon class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- Item Total -->
-              <div class="text-right">
-                <p class="text-sm font-semibold text-gray-900">
-                  ₱{{ formatPrice(item.priceCents * item.quantity) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Voucher Code -->
-        <div
-          v-if="!cartStore.isEmpty"
-          class="px-6 py-4 border-t border-gray-200"
-        >
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700"
-              >Voucher Code</label
-            >
-            <div class="flex space-x-2">
-              <input
-                v-model="voucherCode"
-                type="text"
-                placeholder="Enter voucher code"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <BaseButton
-                @click="applyVoucher"
-                size="sm"
-                variant="secondary"
-                :disabled="!voucherCode.trim()"
-              >
-                Apply
-              </BaseButton>
-            </div>
-            <div
-              v-if="cartStore.voucherDiscount > 0"
-              class="text-sm text-green-600"
-            >
-              Voucher applied: -₱{{ formatPrice(cartStore.voucherDiscount) }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Order Summary -->
-        <div
-          v-if="!cartStore.isEmpty"
-          class="px-6 py-4 border-t border-gray-200 bg-gray-50"
-        >
-          <div class="space-y-2">
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-600">Subtotal</span>
-              <span class="font-medium"
-                >₱{{ formatPrice(cartStore.subtotalCents) }}</span
-              >
-            </div>
-            <div
-              v-if="cartStore.shippingFeeCents > 0"
-              class="flex justify-between text-sm"
-            >
-              <span class="text-gray-600">Delivery Fee</span>
-              <span class="font-medium"
-                >₱{{ formatPrice(cartStore.shippingFeeCents) }}</span
-              >
-            </div>
-            <div
-              v-if="cartStore.convenienceFeeCents > 0"
-              class="flex justify-between text-sm"
-            >
-              <span class="text-gray-600">Convenience Fee</span>
-              <span class="font-medium"
-                >₱{{ formatPrice(cartStore.convenienceFeeCents) }}</span
-              >
-            </div>
-            <div
-              v-if="cartStore.voucherDiscount > 0"
-              class="flex justify-between text-sm text-green-600"
-            >
-              <span>Voucher Discount</span>
-              <span class="font-medium"
-                >-₱{{ formatPrice(cartStore.voucherDiscount) }}</span
-              >
-            </div>
-            <div class="border-t border-gray-300 pt-2 flex justify-between">
-              <span class="font-semibold text-gray-900">Grand Total</span>
-              <span class="font-bold text-primary-600"
-                >₱{{ formatPrice(cartStore.totalCents) }}</span
-              >
-            </div>
-          </div>
-
-          <!-- Continue Button -->
-          <BaseButton @click="proceedToCheckout" class="w-full mt-4" size="lg">
-            Continue to Checkout
-          </BaseButton>
-        </div>
-      </div>
     </div>
 
     <!-- Product Detail Modal -->
@@ -369,35 +195,27 @@
             <p class="text-sm text-gray-700">{{ selectedProduct.description }}</p>
           </div>
 
-          <!-- Quantity Selector -->
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-sm font-medium text-gray-700">Quantity:</span>
-            <div class="flex items-center space-x-2">
-              <button
-                @click="modalQuantity = Math.max(1, modalQuantity - 1)"
-                class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-              >
-                <MinusIcon class="h-4 w-4" />
-              </button>
-              <span class="text-lg font-medium w-8 text-center">{{
-                modalQuantity
-              }}</span>
-              <button
-                @click="modalQuantity++"
-                class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-              >
-                <PlusIcon class="h-4 w-4" />
-              </button>
-            </div>
+          <!-- Product Status -->
+          <div class="mb-4">
+            <span 
+              :class="[
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                selectedProduct.active 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              ]"
+            >
+              {{ selectedProduct.active ? 'Active' : 'Inactive' }}
+            </span>
           </div>
-
-          <!-- Add to Cart Button -->
-          <BaseButton @click="addToCartFromModal" class="w-full" size="lg">
-            <PlusIcon class="h-5 w-5 mr-2" />
-            Add to Cart (₱{{
-              formatPrice(selectedProduct.priceCents * modalQuantity)
-            }})
-          </BaseButton>
+          
+          <!-- Category -->
+          <div class="mb-4" v-if="selectedProduct.category">
+            <h3 class="text-sm font-medium text-gray-900 mb-1">Category</h3>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {{ selectedProduct.category.name }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -412,28 +230,22 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
 import {
   MagnifyingGlassIcon,
   CubeIcon,
-  PlusIcon,
-  MinusIcon,
-  TrashIcon,
   XMarkIcon,
-  ShoppingCartIcon,
+  PlusIcon
 } from "@heroicons/vue/24/outline";
 import {
   useProductSearch,
   useProductCategories,
 } from "../composables/useProducts";
-import { useCartStore } from "../stores/cart";
 import { useGlobalStore } from "../stores/global";
 import BaseButton from "../components/BaseButton.vue";
 import CreateProductModal from "../components/CreateProductModal.vue";
 import type { Product } from "../types";
 
 // Composables
-const router = useRouter();
 const {
   searchTerm,
   selectedCategory,
@@ -444,13 +256,10 @@ const {
   refetch,
 } = useProductSearch();
 const { categories } = useProductCategories();
-const cartStore = useCartStore();
 const globalStore = useGlobalStore();
 
 // State
 const selectedProduct = ref<Product | null>(null);
-const modalQuantity = ref(1);
-const voucherCode = ref("");
 const showCreateProductModal = ref(false);
 
 // Computed
@@ -485,93 +294,10 @@ function formatPrice(cents: number): string {
 
 function openProductModal(product: Product) {
   selectedProduct.value = product;
-  modalQuantity.value = 1;
 }
 
 function closeProductModal() {
   selectedProduct.value = null;
-  modalQuantity.value = 1;
-}
-
-function quickAddToCart(product: Product) {
-  cartStore.addToCart(product, 1);
-
-  globalStore.showSuccess(
-    "Added to Cart",
-    `${product.name} has been added to your cart`
-  );
-}
-
-function addToCartFromModal() {
-  if (selectedProduct.value) {
-    cartStore.addToCart(selectedProduct.value, modalQuantity.value);
-
-    globalStore.showSuccess(
-      "Added to Cart",
-      `${selectedProduct.value.name} (${modalQuantity.value}x) has been added to your cart`
-    );
-
-    closeProductModal();
-  }
-}
-
-function increaseQuantity(productId: string) {
-  const item = cartStore.items.find((item) => item.productId === productId);
-  if (item) {
-    cartStore.updateQuantity(productId, item.quantity + 1);
-  }
-}
-
-function decreaseQuantity(productId: string) {
-  const item = cartStore.items.find((item) => item.productId === productId);
-  if (item && item.quantity > 1) {
-    cartStore.updateQuantity(productId, item.quantity - 1);
-  }
-}
-
-function removeFromCart(productId: string) {
-  cartStore.removeFromCart(productId);
-  globalStore.showInfo("Item Removed", "Item has been removed from your cart");
-}
-
-function applyVoucher() {
-  if (voucherCode.value.trim()) {
-    // Mock voucher application - in real app, this would call an API
-    const discountAmount = 1000; // 10.00 discount
-    cartStore.applyVoucher(voucherCode.value, discountAmount);
-
-    globalStore.showSuccess(
-      "Voucher Applied",
-      `Discount of ₱${formatPrice(discountAmount)} has been applied`
-    );
-
-    voucherCode.value = "";
-  }
-}
-
-function proceedToCheckout() {
-  console.log("Continue to Checkout button clicked");
-
-  // Check if cart has items before proceeding
-  if (cartStore.isEmpty) {
-    console.log("Cart is empty, showing warning");
-    globalStore.showWarning(
-      "Cart Empty",
-      "Please add some products to your cart before proceeding to checkout"
-    );
-    return;
-  }
-
-  console.log(
-    "Navigating to CreateOrder page with cart items:",
-    cartStore.totalItems
-  );
-
-  // Navigate directly to the customer tab to skip product selection
-  router.push({
-    name: "CreateOrder",
-    query: { tab: "customer" },
-  });
 }
 
 function handleProductCreated(product: Product) {
