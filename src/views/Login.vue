@@ -16,6 +16,15 @@
           <p class="mt-2 text-center text-sm text-gray-600">
             Enter your credentials to access the POS system
           </p>
+          <p class="mt-2 text-center text-sm text-gray-600">
+            Don't have an account?
+            <router-link 
+              to="/signup" 
+              class="font-medium text-primary-600 hover:text-primary-500"
+            >
+              Sign up here
+            </router-link>
+          </p>
         </div>
 
         <!-- Login Form -->
@@ -86,36 +95,6 @@
           </BaseButton>
         </form>
 
-        <!-- Demo Login Options -->
-        <div class="mt-8 border-t border-gray-200 pt-6">
-          <div class="text-center">
-            <p class="text-sm font-medium text-gray-700 mb-4">Demo Login Options</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <BaseButton
-                variant="secondary"
-                size="sm"
-                @click="fillDemoCredentials('admin')"
-                :disabled="authStore.isLoading"
-              >
-                <UserIcon class="w-4 h-4 mr-2" />
-                Admin Demo
-              </BaseButton>
-              
-              <BaseButton
-                variant="secondary"
-                size="sm"
-                @click="fillDemoCredentials('staff')"
-                :disabled="authStore.isLoading"
-              >
-                <UserGroupIcon class="w-4 h-4 mr-2" />
-                Staff Demo
-              </BaseButton>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">
-              Use demo credentials for testing purposes
-            </p>
-          </div>
-        </div>
 
         <!-- System Status -->
         <div class="mt-6 text-center">
@@ -147,9 +126,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
-  ExclamationCircleIcon,
-  UserIcon,
-  UserGroupIcon
+  ExclamationCircleIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
 import { useGlobalStore } from '../stores/global'
@@ -177,19 +154,6 @@ const formErrors = reactive({
   password: ''
 })
 
-// Demo credentials
-const demoCredentials = {
-  admin: {
-    email: 'admin@railspos.com',
-    password: 'admin123',
-    role: 'admin'
-  },
-  staff: {
-    email: 'staff@railspos.com', 
-    password: 'staff123',
-    role: 'staff'
-  }
-}
 
 // Computed
 const isFormValid = computed(() => {
@@ -229,17 +193,6 @@ function validateForm(): boolean {
   return isValid
 }
 
-function fillDemoCredentials(type: 'admin' | 'staff') {
-  const credentials = demoCredentials[type]
-  form.email = credentials.email
-  form.password = credentials.password
-  resetErrors()
-  
-  globalStore.showInfo(
-    'Demo Credentials Filled',
-    `Filled with ${type} demo credentials. Click "Sign in" to continue.`
-  )
-}
 
 async function handleSubmit() {
   if (!validateForm()) {
@@ -290,9 +243,5 @@ onMounted(() => {
   // Initialize auth store (check for stored tokens)
   authStore.initializeAuth()
   
-  // Auto-fill demo credentials in development
-  if (import.meta.env.DEV) {
-    fillDemoCredentials('admin')
-  }
 })
 </script>

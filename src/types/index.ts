@@ -56,7 +56,6 @@ export interface Order {
   subtotalCents: number
   shippingFeeCents: number
   convenienceFeeCents: number
-  discountCents: number
   totalCents: number
   shippingMethodLabel?: string
   paymentMethodLabel?: string
@@ -341,8 +340,6 @@ export interface CartState {
   paymentMethod: string
   shippingMethod: string
   isOnlineOrder: boolean
-  voucherCode: string
-  voucherDiscount: number
 }
 
 export interface AuthState {

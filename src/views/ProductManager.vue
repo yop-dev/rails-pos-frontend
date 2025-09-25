@@ -37,22 +37,34 @@
             >
               All
             </button>
-            <button
+            <div
               v-for="category in categories"
               :key="category.id"
-              @click="selectedCategory = category.id"
-              :class="[
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                selectedCategory === category.id
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-              ]"
+              class="relative group"
             >
-              {{ category.name }}
-              <span class="ml-1 text-xs opacity-75"
-                >({{ category.productsCount }})</span
+              <button
+                @click="selectedCategory = category.id"
+                :class="[
+                  'px-4 py-2 rounded-full text-sm font-medium transition-colors pr-8',
+                  selectedCategory === category.id
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                ]"
               >
-            </button>
+                {{ category.name }}
+                <span class="ml-1 text-xs opacity-75"
+                  >({{ category.productsCount }})</span
+                >
+              </button>
+              <button
+                @click="handleDeleteCategory(category.id, category.name)"
+                class="absolute right-1 top-1/2 transform -translate-y-1/2 opacity-30 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded-full"
+                :title="category.productsCount === 0 ? 'Delete category' : `Cannot delete: ${category.productsCount} products in category`"
+                :disabled="deletingCategory"
+              >
+                <TrashIcon class="h-3 w-3 text-red-600" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -90,14 +102,25 @@
               :key="product.id"
               class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative group"
             >
-              <!-- Edit Button -->
-              <button
-                @click="startEditing(product)"
-                class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-1.5 shadow-sm hover:bg-gray-50 z-10"
-                title="Edit product"
-              >
-                <PencilIcon class="h-4 w-4 text-gray-600" />
-              </button>
+              <!-- Action Buttons -->
+              <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1 z-10">
+                <button
+                  @click="startEditing(product)"
+                  class="bg-white rounded-full p-1.5 shadow-sm hover:bg-gray-50"
+                  title="Edit product"
+                  :disabled="deleting"
+                >
+                  <PencilIcon class="h-4 w-4 text-gray-600" />
+                </button>
+                <button
+                  @click="handleDeleteProduct(product)"
+                  class="bg-white rounded-full p-1.5 shadow-sm hover:bg-red-50"
+                  title="Delete product"
+                  :disabled="deleting"
+                >
+                  <TrashIcon class="h-4 w-4 text-red-600" />
+                </button>
+              </div>
 
               <!-- Product Image -->
               <div
@@ -293,12 +316,15 @@ import {
   CubeIcon,
   XMarkIcon,
   PlusIcon,
-  PencilIcon
+  PencilIcon,
+  TrashIcon
 } from "@heroicons/vue/24/outline";
 import {
   useProductSearch,
   useProductCategories,
   useUpdateProduct,
+  useDeleteProduct,
+  useDeleteProductCategory,
   priceToCents
 } from "../composables/useProducts";
 import { useGlobalStore } from "../stores/global";
@@ -316,8 +342,10 @@ const {
   error,
   refetch,
 } = useProductSearch();
-const { categories } = useProductCategories();
+const { categories, refetch: refetchCategories } = useProductCategories();
 const { updateProduct, loading: updating } = useUpdateProduct();
+const { deleteProduct, loading: deleting } = useDeleteProduct();
+const { deleteCategory, loading: deletingCategory } = useDeleteProductCategory();
 const globalStore = useGlobalStore();
 
 // State
@@ -438,6 +466,68 @@ function handleProductCreated(product: Product) {
     "Product Created",
     `${product.name} has been added to your catalog`
   );
+}
+
+async function handleDeleteProduct(product: Product) {
+  if (!confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+    return;
+  }
+  
+  try {
+    const result = await deleteProduct(product.id);
+    
+    if (result.success) {
+      globalStore.showSuccess(
+        "Product Deleted",
+        `${product.name} has been removed from your catalog`
+      );
+      
+      // Refresh the products list
+      refetch();
+    } else {
+      globalStore.showError(
+        "Delete Failed",
+        result.errors?.[0]?.message || "Failed to delete product"
+      );
+    }
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    globalStore.showError(
+      "Delete Failed",
+      "An unexpected error occurred while deleting the product"
+    );
+  }
+}
+
+async function handleDeleteCategory(categoryId: string, categoryName: string) {
+  if (!confirm(`Are you sure you want to delete the "${categoryName}" category? This action cannot be undone.`)) {
+    return;
+  }
+  
+  try {
+    const result = await deleteCategory(categoryId);
+    
+    if (result.success) {
+      globalStore.showSuccess(
+        "Category Deleted",
+        `${categoryName} category has been removed`
+      );
+      
+      // Refresh the categories list
+      refetchCategories();
+    } else {
+      globalStore.showError(
+        "Delete Failed",
+        result.errors?.[0]?.message || "Failed to delete category"
+      );
+    }
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    globalStore.showError(
+      "Delete Failed",
+      "An unexpected error occurred while deleting the category"
+    );
+  }
 }
 
 // Initialize with active products only

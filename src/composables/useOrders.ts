@@ -20,9 +20,6 @@ const GET_ORDERS = gql`
       convenienceFee {
         formatted
       }
-      discount {
-        formatted
-      }
       total {
         formatted
       }
@@ -84,15 +81,11 @@ const GET_ORDER = gql`
       convenienceFee {
         formatted
       }
-      discount {
-        formatted
-      }
       total {
         formatted
       }
       shippingMethodLabel
       paymentMethodLabel
-      voucherCode
       createdAt
       confirmedAt
       completedAt
@@ -199,9 +192,6 @@ const CREATE_ORDER = gql`
           formatted
         }
         convenienceFee {
-          formatted
-        }
-        discount {
           formatted
         }
         total {

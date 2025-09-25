@@ -15,7 +15,6 @@ const CREATE_ORDER = gql`
         subtotalCents
         shippingFeeCents
         convenienceFeeCents
-        discountCents
         totalCents
         shippingMethodLabel
         paymentMethodLabel
@@ -249,7 +248,6 @@ export function useMockOrderCreation() {
         subtotalCents: orderInput.items.reduce((sum, item) => sum + (15000 * item.quantity), 0), // Mock price
         shippingFeeCents: orderInput.source === 'ONLINE' ? 500 : 0,
         convenienceFeeCents: orderInput.paymentMethodCode === 'card' ? 100 : 0,
-        discountCents: 0,
         totalCents: 0, // Will be calculated
         shippingMethodLabel: orderInput.shippingMethodCode ? 'Standard Delivery' : undefined,
         paymentMethodLabel: getPaymentMethodLabel(orderInput.paymentMethodCode),
@@ -305,7 +303,7 @@ export function useMockOrderCreation() {
       }
       
       // Calculate total
-      mockOrder.totalCents = mockOrder.subtotalCents + mockOrder.shippingFeeCents + mockOrder.convenienceFeeCents - mockOrder.discountCents
+      mockOrder.totalCents = mockOrder.subtotalCents + mockOrder.shippingFeeCents + mockOrder.convenienceFeeCents
       
       return {
         success: true,

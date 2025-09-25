@@ -119,6 +119,32 @@ const CREATE_PRODUCT_CATEGORY = gql`
   }
 `
 
+const DELETE_PRODUCT = gql`
+  mutation DeleteProduct($input: DeleteProductInput!) {
+    deleteProduct(input: $input) {
+      deletedId
+      success
+      errors {
+        message
+        path
+      }
+    }
+  }
+`
+
+const DELETE_PRODUCT_CATEGORY = gql`
+  mutation DeleteProductCategory($input: DeleteProductCategoryInput!) {
+    deleteProductCategory(input: $input) {
+      deletedId
+      success
+      errors {
+        message
+        path
+      }
+    }
+  }
+`
+
 // Composables
 export function useProducts(filter: Ref<any> = ref(null)) {
   const { result, loading, error, refetch } = useQuery(GET_PRODUCTS, () => ({
@@ -464,4 +490,80 @@ export function getPriceCents(product: Product): number {
 // Utility function to get formatted price from Product
 export function getFormattedPrice(product: Product): string {
   return product.price.formatted
+}
+
+export function useDeleteProduct() {
+  const { mutate: deleteProductMutation, loading, error } = useMutation(DELETE_PRODUCT)
+  
+  const deleteProduct = async (productId: string): Promise<{ success: boolean; deletedId?: string; errors?: ApiError[] }> => {
+    try {
+      const result = await deleteProductMutation({
+        input: {
+          id: productId
+        }
+      })
+      
+      if (result?.data?.deleteProduct?.success) {
+        return {
+          success: true,
+          deletedId: result.data.deleteProduct.deletedId
+        }
+      } else {
+        return {
+          success: false,
+          errors: result?.data?.deleteProduct?.errors || [{ message: 'Failed to delete product' }]
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err)
+      return {
+        success: false,
+        errors: [{ message: 'An unexpected error occurred while deleting the product' }]
+      }
+    }
+  }
+  
+  return {
+    deleteProduct,
+    loading,
+    error
+  }
+}
+
+export function useDeleteProductCategory() {
+  const { mutate: deleteCategoryMutation, loading, error } = useMutation(DELETE_PRODUCT_CATEGORY)
+  
+  const deleteCategory = async (categoryId: string): Promise<{ success: boolean; deletedId?: string; errors?: ApiError[] }> => {
+    try {
+      const result = await deleteCategoryMutation({
+        input: {
+          id: categoryId
+        }
+      })
+      
+      if (result?.data?.deleteProductCategory?.success) {
+        return {
+          success: true,
+          deletedId: result.data.deleteProductCategory.deletedId
+        }
+      } else {
+        return {
+          success: false,
+          errors: result?.data?.deleteProductCategory?.errors || [{ message: 'Failed to delete category' }]
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting category:', err)
+      return {
+        success: false,
+        errors: [{ message: 'An unexpected error occurred while deleting the category' }]
+      }
+    }
+  }
+  
+  return {
+    deleteCategory,
+    loading,
+    error
+  }
 }

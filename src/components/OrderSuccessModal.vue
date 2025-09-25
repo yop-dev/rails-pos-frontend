@@ -98,10 +98,6 @@
                 <span class="font-medium">{{ formatPrice(convenienceFee) }}</span>
               </div>
               
-              <div v-if="voucherDiscount > 0" class="flex justify-between text-sm text-green-600">
-                <span>Voucher Discount:</span>
-                <span class="font-medium">-{{ formatPrice(voucherDiscount) }}</span>
-              </div>
               
               <div class="border-t border-gray-200 pt-2 mt-2">
                 <div class="flex justify-between text-lg font-bold">
@@ -159,7 +155,6 @@ const props = defineProps<{
   paymentMethod?: string
   shippingFee?: number
   convenienceFee?: number
-  voucherDiscount?: number
 }>()
 
 const emit = defineEmits<{
@@ -184,7 +179,6 @@ const grandTotal = computed(() => {
   let total = subtotal.value
   if (props.shippingFee) total += props.shippingFee
   if (props.convenienceFee) total += props.convenienceFee
-  if (props.voucherDiscount) total -= props.voucherDiscount
   return total
 })
 

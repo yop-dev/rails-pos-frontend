@@ -256,34 +256,6 @@
                 </div>
               </div>
               
-              <!-- Voucher Section -->
-              <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h4 class="text-lg font-semibold text-gray-900 mb-4">Voucher Code</h4>
-                <div class="space-y-3">
-                  <div class="flex items-center space-x-3">
-                    <BaseInput
-                      v-model="voucherCode"
-                      placeholder="Enter voucher code"
-                      class="flex-1"
-                    />
-                    <BaseButton
-                      size="sm"
-                      @click="applyVoucher"
-                      :disabled="!voucherCode || voucherApplied"
-                      :loading="applyingVoucher"
-                    >
-                      Apply
-                    </BaseButton>
-                  </div>
-                  
-                  <div v-if="cartStore.voucherCode" class="flex items-center justify-between text-sm">
-                    <span class="text-green-600 font-medium">Voucher Applied: {{ cartStore.voucherCode }}</span>
-                    <button @click="removeVoucher" class="text-red-600 hover:text-red-800">
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
               
               <!-- Payment Summary + Next Button -->
               <div class="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
@@ -306,10 +278,6 @@
                         <span class="font-medium text-green-900">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
                       </div>
                       
-                      <div v-if="cartStore.voucherDiscount > 0" class="flex items-center justify-between text-sm text-green-600">
-                        <span>Voucher Discount:</span>
-                        <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
-                      </div>
                       
                       <div class="border-t border-green-300 pt-2 mt-3">
                         <div class="flex items-center justify-between text-lg font-bold">
@@ -417,10 +385,6 @@
                       <span class="font-medium">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
                     </div>
                     
-                    <div v-if="cartStore.voucherDiscount > 0" class="flex items-center justify-between text-sm text-green-600">
-                      <span>Voucher Discount ({{ cartStore.voucherCode }})</span>
-                      <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
-                    </div>
                     
                     <div class="border-t border-gray-200 pt-2 mt-3">
                       <div class="flex items-center justify-between text-lg font-semibold">
@@ -463,7 +427,7 @@
 
       <!-- Right Sidebar - Cart -->
       <div class="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-        <ShoppingCart :show-checkout-button="false" :show-voucher="false" />
+        <ShoppingCart :show-checkout-button="false" />
       </div>
     </div>
 
@@ -610,10 +574,6 @@
                     <span class="font-medium text-gray-900">{{ formatOrderPrice(successOrder.convenienceFeeCents) }}</span>
                   </div>
                   
-                  <div v-if="hasDiscount(successOrder)" class="flex items-center justify-between text-sm text-green-600">
-                    <span>Discount:</span>
-                    <span class="font-medium">-{{ formatOrderPrice(successOrder.discountCents) }}</span>
-                  </div>
                   
                   <div class="border-t border-green-300 pt-2 mt-3">
                     <div class="flex items-center justify-between text-lg font-bold">
@@ -718,16 +678,12 @@ const successOrder = ref<Order | null>(null)
 // Template refs
 const customerSearchFormRef = ref()
 
-// Voucher state
-const voucherCode = ref('')
-const applyingVoucher = ref(false)
 
 // Computed
 const hasPhysicalProducts = computed(() => 
   cartStore.items.some(item => item.productType === 'PHYSICAL')
 )
 
-const voucherApplied = computed(() => !!cartStore.voucherCode)
 
 const canPlaceOrder = computed(() => {
   validationErrors.value = []
@@ -1066,43 +1022,7 @@ function formatOrderPrice(priceCents: number): string {
   return '₱0.00'
 }
 
-// Check if order has discount
-function hasDiscount(order: any): boolean {
-  if (!order) return false
-  return order.discountCents > 0
-}
 
-// Voucher methods
-async function applyVoucher() {
-  if (!voucherCode.value) return
-  
-  applyingVoucher.value = true
-  
-  try {
-    // Simulate voucher validation (replace with actual API call)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock voucher logic - simplified version
-    if (voucherCode.value.toUpperCase() === 'SAVE10') {
-      const discount = Math.floor(cartStore.subtotalCents * 0.1)
-      cartStore.applyVoucher(voucherCode.value, discount)
-      voucherCode.value = ''
-      globalStore.showSuccess('Voucher Applied', `Discount of ${formatPrice(discount)} has been applied`)
-    } else {
-      globalStore.showError('Invalid Voucher', 'Please check your voucher code and try again')
-    }
-  } catch (error) {
-    console.error('Error applying voucher:', error)
-    globalStore.showError('Error', 'Failed to apply voucher. Please try again.')
-  } finally {
-    applyingVoucher.value = false
-  }
-}
-
-function removeVoucher() {
-  cartStore.applyVoucher('', 0)
-  globalStore.showInfo('Voucher Removed', 'Voucher discount has been removed')
-}
 
 async function handlePlaceOrder() {
   if (!canPlaceOrder.value) {

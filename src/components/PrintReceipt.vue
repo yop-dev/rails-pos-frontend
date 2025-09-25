@@ -77,13 +77,6 @@
           <td>Convenience Fee:</td>
           <td class="text-right">{{ order.convenienceFee.formatted }}</td>
         </tr>
-        <tr v-if="order.discount">
-          <td>Discount:</td>
-          <td class="text-right text-red">-{{ order.discount.formatted }}</td>
-        </tr>
-        <tr v-if="order.voucherCode">
-          <td colspan="2" class="voucher-code">Voucher: {{ order.voucherCode }}</td>
-        </tr>
         <tr class="total-row">
           <td><strong>Total:</strong></td>
           <td class="text-right"><strong>{{ order.total.formatted }}</strong></td>

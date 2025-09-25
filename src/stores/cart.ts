@@ -34,8 +34,6 @@ export const useCartStore = defineStore('cart', () => {
   const paymentMethod = ref<string>(initialData.paymentMethod || '')
   const shippingMethod = ref<string>(initialData.shippingMethod || '')
   const isOnlineOrder = ref<boolean>(initialData.isOnlineOrder ?? true)
-  const voucherCode = ref<string>(initialData.voucherCode || '')
-  const voucherDiscount = ref<number>(initialData.voucherDiscount || 0)
 
   // Getters
   const subtotalCents = computed(() => 
@@ -71,8 +69,7 @@ export const useCartStore = defineStore('cart', () => {
   const totalCents = computed(() => 
     subtotalCents.value + 
     shippingFeeCents.value + 
-    convenienceFeeCents.value - 
-    voucherDiscount.value
+    convenienceFeeCents.value
   )
 
   const totalItems = computed(() => 
@@ -141,10 +138,6 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  function applyVoucher(code: string, discount: number) {
-    voucherCode.value = code
-    voucherDiscount.value = discount
-  }
 
   function clearCart() {
     items.value = []
@@ -152,8 +145,6 @@ export const useCartStore = defineStore('cart', () => {
     deliveryAddress.value = null
     paymentMethod.value = ''
     shippingMethod.value = ''
-    voucherCode.value = ''
-    voucherDiscount.value = 0
     isOnlineOrder.value = true
     
     // Clear from localStorage as well
@@ -178,8 +169,6 @@ export const useCartStore = defineStore('cart', () => {
       paymentMethod: paymentMethod.value,
       shippingMethod: shippingMethod.value,
       isOnlineOrder: isOnlineOrder.value,
-      voucherCode: voucherCode.value,
-      voucherDiscount: voucherDiscount.value
     }),
     (newData) => {
       saveToStorage(newData)
@@ -195,8 +184,6 @@ export const useCartStore = defineStore('cart', () => {
     paymentMethod,
     shippingMethod,
     isOnlineOrder,
-    voucherCode,
-    voucherDiscount,
     
     // Getters
     subtotalCents,
@@ -215,7 +202,6 @@ export const useCartStore = defineStore('cart', () => {
     setPaymentMethod,
     setShippingMethod,
     setOrderType,
-    applyVoucher,
     clearCart,
     $reset
   }

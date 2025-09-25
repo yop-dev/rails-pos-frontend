@@ -187,13 +187,6 @@
               <span class="text-gray-600">Convenience Fee</span>
               <span class="text-gray-900">{{ order.convenienceFee.formatted }}</span>
             </div>
-            <div class="flex justify-between text-sm" v-if="order.discount">
-              <span class="text-gray-600">Discount</span>
-              <span class="text-red-600">-{{ order.discount.formatted }}</span>
-            </div>
-            <div v-if="order.voucherCode" class="text-xs text-gray-500">
-              Voucher: {{ order.voucherCode }}
-            </div>
             <div class="border-t border-gray-200 pt-3">
               <div class="flex justify-between font-semibold text-lg">
                 <span class="text-gray-900">Total</span>

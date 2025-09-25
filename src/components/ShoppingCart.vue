@@ -40,33 +40,6 @@
       </div>
     </div>
 
-    <!-- Voucher Section -->
-    <div v-if="!cartStore.isEmpty && props.showVoucher" class="flex-shrink-0 px-6 py-4 border-t border-gray-200">
-      <div class="space-y-3">
-        <div class="flex items-center space-x-3">
-          <BaseInput
-            v-model="voucherCode"
-            placeholder="Enter voucher code"
-            class="flex-1"
-          />
-          <BaseButton
-            size="sm"
-            @click="applyVoucher"
-            :disabled="!voucherCode || voucherApplied"
-            :loading="applyingVoucher"
-          >
-            Apply
-          </BaseButton>
-        </div>
-        
-        <div v-if="cartStore.voucherCode" class="flex items-center justify-between text-sm">
-          <span class="text-green-600 font-medium">Voucher Applied: {{ cartStore.voucherCode }}</span>
-          <button @click="removeVoucher" class="text-red-600 hover:text-red-800">
-            Remove
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- Order Summary -->
     <div v-if="!cartStore.isEmpty" class="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200">
@@ -86,10 +59,6 @@
           <span class="font-medium">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
         </div>
         
-        <div v-if="cartStore.voucherDiscount > 0" class="flex items-center justify-between text-sm text-green-600">
-          <span>Voucher Discount</span>
-          <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
-        </div>
         
         <div class="border-t border-gray-200 pt-2 mt-3">
           <div class="flex items-center justify-between">
@@ -127,7 +96,6 @@ import CartItem from './CartItem.vue'
 // Props
 const props = defineProps<{
   showCheckoutButton?: boolean
-  showVoucher?: boolean
 }>()
 
 // Emits
@@ -135,46 +103,10 @@ const emit = defineEmits<{
   'continue-checkout': []
 }>()
 
-// State
-const voucherCode = ref('')
-const applyingVoucher = ref(false)
 
 // Composables
 const cartStore = useCartStore()
 const globalStore = useGlobalStore()
 
-// Computed
-const voucherApplied = computed(() => !!cartStore.voucherCode)
 
-// Methods
-async function applyVoucher() {
-  if (!voucherCode.value) return
-  
-  applyingVoucher.value = true
-  
-  try {
-    // Simulate voucher validation (replace with actual API call)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock voucher logic - simplified version matching the spec
-    if (voucherCode.value.toUpperCase() === 'SAVE10') {
-      const discount = Math.floor(cartStore.subtotalCents * 0.1)
-      cartStore.applyVoucher(voucherCode.value, discount)
-      voucherCode.value = ''
-      globalStore.showSuccess('Voucher Applied', `Discount of ${formatPrice(discount)} has been applied`)
-    } else {
-      globalStore.showError('Invalid Voucher', 'Please check your voucher code and try again')
-    }
-  } catch (error) {
-    console.error('Error applying voucher:', error)
-    globalStore.showError('Error', 'Failed to apply voucher. Please try again.')
-  } finally {
-    applyingVoucher.value = false
-  }
-}
-
-function removeVoucher() {
-  cartStore.applyVoucher('', 0)
-  globalStore.showInfo('Voucher Removed', 'Voucher discount has been removed')
-}
 </script>

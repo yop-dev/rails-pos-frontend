@@ -152,10 +152,6 @@
                 <span class="font-medium">{{ formatPrice(cartStore.convenienceFeeCents) }}</span>
               </div>
               
-              <div v-if="cartStore.voucherDiscount > 0" class="flex justify-between text-sm text-green-600">
-                <span>Discount</span>
-                <span class="font-medium">-{{ formatPrice(cartStore.voucherDiscount) }}</span>
-              </div>
               
               <div class="border-t border-gray-200 pt-1 mt-2">
                 <div class="flex justify-between">

@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/auth'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/orders'
+    redirect: '/login'
   },
   // Public routes
   {
@@ -13,6 +13,16 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Login.vue'),
     meta: { 
       title: 'Login - Rails POS',
+      requiresAuth: false,
+      layout: 'auth' // Use different layout for auth pages
+    }
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('../views/Signup.vue'),
+    meta: { 
+      title: 'Sign Up - Rails POS',
       requiresAuth: false,
       layout: 'auth' // Use different layout for auth pages
     }
@@ -66,7 +76,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    redirect: '/orders'
+    redirect: '/login'
   }
 ]
 
@@ -106,8 +116,8 @@ router.beforeEach(async (to, from, next) => {
     return
   }
   
-  // If user is logged in and trying to access login page, redirect to orders
-  if (to.name === 'Login' && authStore.isLoggedIn) {
+  // If user is logged in and trying to access auth pages, redirect to orders
+  if ((to.name === 'Login' || to.name === 'Signup') && authStore.isLoggedIn) {
     console.log('Router: User already logged in, redirecting to orders')
     next({ name: 'OrderManager' })
     return
