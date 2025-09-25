@@ -72,6 +72,36 @@ const CREATE_PRODUCT = gql`
   }
 `
 
+const UPDATE_PRODUCT = gql`
+  mutation UpdateProduct($id: ID!, $input: ProductUpdateInput!) {
+    updateProduct(id: $id, input: $input) {
+      product {
+        id
+        name
+        description
+        productType
+        priceCents
+        price {
+          cents
+          currency
+          formatted
+        }
+        currency
+        photoUrl
+        active
+        category {
+          id
+          name
+        }
+      }
+      errors {
+        message
+        path
+      }
+    }
+  }
+`
+
 const CREATE_PRODUCT_CATEGORY = gql`
   mutation CreateProductCategory($input: CreateProductCategoryInput!) {
     createProductCategory(input: $input) {
@@ -209,6 +239,43 @@ export function useCreateProduct() {
   
   return {
     createProduct,
+    loading,
+    error
+  }
+}
+
+export function useUpdateProduct() {
+  const { mutate: updateProductMutation, loading, error } = useMutation(UPDATE_PRODUCT)
+  
+  const updateProduct = async (productId: string, updateData: any): Promise<{ success: boolean; product?: Product; errors?: ApiError[] }> => {
+    try {
+      const result = await updateProductMutation({
+        id: productId,
+        input: updateData
+      })
+      
+      if (result?.data?.updateProduct?.errors?.length && result.data.updateProduct.errors.length > 0) {
+        return {
+          success: false,
+          errors: result.data.updateProduct.errors
+        }
+      }
+      
+      return {
+        success: true,
+        product: result?.data?.updateProduct?.product
+      }
+    } catch (err) {
+      console.error('Error updating product:', err)
+      return {
+        success: false,
+        errors: [{ message: 'An unexpected error occurred while updating the product' }]
+      }
+    }
+  }
+  
+  return {
+    updateProduct,
     loading,
     error
   }
