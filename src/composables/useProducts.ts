@@ -43,7 +43,7 @@ const GET_PRODUCT_CATEGORIES = gql`
 `
 
 const CREATE_PRODUCT = gql`
-  mutation CreateProduct($input: ProductInput!) {
+  mutation CreateProduct($input: CreateProductInput!) {
     createProduct(input: $input) {
       product {
         id
@@ -103,8 +103,8 @@ const UPDATE_PRODUCT = gql`
 `
 
 const CREATE_PRODUCT_CATEGORY = gql`
-  mutation CreateCategory($name: String!, $position: Int) {
-    createCategory(name: $name, position: $position) {
+  mutation CreateCategory($input: CreateCategoryInput!) {
+    createCategory(input: $input) {
       category {
         id
         name
@@ -212,7 +212,9 @@ export function useCreateProduct() {
   const createProduct = async (productData: any): Promise<{ success: boolean; product?: Product; errors?: ApiError[] }> => {
     try {
       const result = await createProductMutation({
-        input: productData
+        input: {
+          input: productData
+        }
       })
       
       if (result?.data?.createProduct?.errors?.length && result.data.createProduct.errors.length > 0) {
@@ -302,7 +304,7 @@ export function useCreateProductWithPhoto() {
       const formData = new FormData()
       
       const operations = JSON.stringify({
-        query: `mutation CreateProduct($input: ProductInput!) {
+        query: `mutation CreateProduct($input: CreateProductInput!) {
           createProduct(input: $input) { 
             product { 
               id 
@@ -331,14 +333,16 @@ export function useCreateProductWithPhoto() {
         }`,
         variables: {
           input: {
-            ...productData,
-            photo: null // Will be mapped via form data
+            input: {
+              ...productData,
+              photo: null // Will be mapped via form data
+            }
           }
         }
       })
       
       const map = JSON.stringify({
-        '0': ['variables.input.photo']
+        '0': ['variables.input.input.photo']
       })
       
       formData.append('operations', operations)
@@ -409,8 +413,10 @@ export function useCreateProductCategory() {
   const createCategory = async (categoryData: any): Promise<{ success: boolean; category?: Category; errors?: ApiError[] }> => {
     try {
       const result = await createCategoryMutation({
-        name: categoryData.name,
-        position: categoryData.position
+        input: {
+          name: categoryData.name,
+          position: categoryData.position || 1
+        }
       })
       
       if (result?.data?.createCategory?.errors?.length && result.data.createCategory.errors.length > 0) {

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphQL Category Mutation Introspection</title>
+</head>
+<body>
+    <h1>Category Mutation Signatures</h1>
+    <div id="results"></div>
+
+    <script>
+        async function introspectMutations() {
+            const query = `
+                query IntrospectionQuery {
+                    __schema {
+                        mutationType {
+                            fields {
+                                name
+                                args {
+                                    name
+                                    type {
+                                        name
+                                        kind
+                                        ofType {
+                                            name
+                                            kind
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            `;
+
+            try {
+                const response = await fetch('http://localhost:3000/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const result = await response.json();
+                
+                // Find category-related mutations
+                const mutations = result.data.__schema.mutationType.fields;
+                const categoryMutations = mutations.filter(mutation => 
+                    mutation.name.toLowerCase().includes('category')
+                );
+
+                console.log('Category Mutations:', categoryMutations);
+
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '<h2>Category mutation signatures:</h2>';
+                
+                categoryMutations.forEach(mutation => {
+                    resultsDiv.innerHTML += `
+                        <h3>${mutation.name}</h3>
+                        <h4>Arguments:</h4>
+                        <ul>
+                            ${mutation.args.map(arg => {
+                                const typeName = arg.type.name || arg.type.ofType?.name || arg.type.kind;
+                                return `<li><strong>${arg.name}</strong>: ${typeName}${arg.type.kind === 'NON_NULL' ? '!' : ''}</li>`;
+                            }).join('')}
+                        </ul>
+                    `;
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        introspectMutations();
+    </script>
+</body>
+</html>

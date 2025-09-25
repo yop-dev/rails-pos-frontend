@@ -36,7 +36,7 @@
             <div
               v-if="modelValue"
               :class="[
-                'relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:p-6',
+                'relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:p-6 max-h-[90vh] flex flex-col',
                 sizeClasses,
               ]"
               role="dialog"
@@ -67,12 +67,12 @@
               </div>
 
               <!-- Content -->
-              <div>
+              <div class="flex-1 overflow-y-auto min-h-0">
                 <slot></slot>
               </div>
 
               <!-- Footer -->
-              <div v-if="hasFooter" class="mt-5 sm:mt-6">
+              <div v-if="hasFooter" class="mt-5 sm:mt-6 flex-shrink-0">
                 <slot name="footer"></slot>
               </div>
             </div>
@@ -90,7 +90,7 @@ import { XMarkIcon } from "@heroicons/vue/24/outline";
 interface Props {
   modelValue: boolean;
   title?: string;
-  size?: "sm" | "md" | "lg" | "xl" | "full";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full";
   persistent?: boolean;
   showClose?: boolean;
   showHeader?: boolean;
@@ -126,6 +126,12 @@ const sizeClasses = computed(() => {
       return "sm:max-w-lg sm:w-full";
     case "xl":
       return "sm:max-w-xl sm:w-full";
+    case "2xl":
+      return "sm:max-w-2xl sm:w-full";
+    case "3xl":
+      return "sm:max-w-3xl sm:w-full";
+    case "4xl":
+      return "sm:max-w-4xl sm:w-full";
     case "full":
       return "sm:max-w-full sm:w-full sm:h-full";
     default:
