@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphQL Schema Introspection</title>
+</head>
+<body>
+    <h1>GraphQL Schema Input Types</h1>
+    <div id="results"></div>
+
+    <script>
+        async function introspectSchema() {
+            const query = `
+                query IntrospectionQuery {
+                    __schema {
+                        types {
+                            name
+                            kind
+                            fields {
+                                name
+                                type {
+                                    name
+                                    kind
+                                }
+                            }
+                            inputFields {
+                                name
+                                type {
+                                    name
+                                    kind
+                                }
+                            }
+                        }
+                    }
+                }
+            `;
+
+            try {
+                const response = await fetch('http://localhost:3000/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const result = await response.json();
+                
+                // Filter for input types containing "Product" or "Update"
+                const inputTypes = result.data.__schema.types.filter(type => 
+                    type.kind === 'INPUT_OBJECT' && 
+                    (type.name.includes('Product') || type.name.includes('Update'))
+                );
+
+                console.log('Product/Update Input Types:', inputTypes);
+
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '<h2>Product/Update Input Types:</h2>';
+                
+                inputTypes.forEach(type => {
+                    resultsDiv.innerHTML += `
+                        <h3>${type.name}</h3>
+                        <ul>
+                            ${type.inputFields?.map(field => 
+                                `<li>${field.name}: ${field.type.name || field.type.kind}</li>`
+                            ).join('') || 'No fields'}
+                        </ul>
+                    `;
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        introspectSchema();
+    </script>
+</body>
+</html>

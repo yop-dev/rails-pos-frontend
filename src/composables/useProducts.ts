@@ -43,7 +43,7 @@ const GET_PRODUCT_CATEGORIES = gql`
 `
 
 const CREATE_PRODUCT = gql`
-  mutation CreateProduct($input: CreateProductInput!) {
+  mutation CreateProduct($input: ProductInput!) {
     createProduct(input: $input) {
       product {
         id
@@ -73,8 +73,8 @@ const CREATE_PRODUCT = gql`
 `
 
 const UPDATE_PRODUCT = gql`
-  mutation UpdateProduct($id: ID!, $input: ProductUpdateInput!) {
-    updateProduct(id: $id, input: $input) {
+  mutation UpdateProduct($input: UpdateProductInput!) {
+    updateProduct(input: $input) {
       product {
         id
         name
@@ -103,8 +103,8 @@ const UPDATE_PRODUCT = gql`
 `
 
 const CREATE_PRODUCT_CATEGORY = gql`
-  mutation CreateProductCategory($input: CreateProductCategoryInput!) {
-    createProductCategory(input: $input) {
+  mutation CreateCategory($name: String!, $position: Int) {
+    createCategory(name: $name, position: $position) {
       category {
         id
         name
@@ -212,9 +212,7 @@ export function useCreateProduct() {
   const createProduct = async (productData: any): Promise<{ success: boolean; product?: Product; errors?: ApiError[] }> => {
     try {
       const result = await createProductMutation({
-        input: {
-          input: productData
-        }
+        input: productData
       })
       
       if (result?.data?.createProduct?.errors?.length && result.data.createProduct.errors.length > 0) {
@@ -250,8 +248,12 @@ export function useUpdateProduct() {
   const updateProduct = async (productId: string, updateData: any): Promise<{ success: boolean; product?: Product; errors?: ApiError[] }> => {
     try {
       const result = await updateProductMutation({
-        id: productId,
-        input: updateData
+        input: {
+          input: {
+            id: productId,
+            ...updateData
+          }
+        }
       })
       
       if (result?.data?.updateProduct?.errors?.length && result.data.updateProduct.errors.length > 0) {
@@ -300,7 +302,7 @@ export function useCreateProductWithPhoto() {
       const formData = new FormData()
       
       const operations = JSON.stringify({
-        query: `mutation CreateProduct($input: CreateProductInput!) { 
+        query: `mutation CreateProduct($input: ProductInput!) {
           createProduct(input: $input) { 
             product { 
               id 
@@ -329,16 +331,14 @@ export function useCreateProductWithPhoto() {
         }`,
         variables: {
           input: {
-            input: {
-              ...productData,
-              photo: null // Will be mapped via form data
-            }
+            ...productData,
+            photo: null // Will be mapped via form data
           }
         }
       })
       
       const map = JSON.stringify({
-        '0': ['variables.input.input.photo']
+        '0': ['variables.input.photo']
       })
       
       formData.append('operations', operations)
@@ -354,7 +354,9 @@ export function useCreateProductWithPhoto() {
       }
       
       console.log('Sending multipart GraphQL request...')
-      const response = await fetch('http://localhost:3000/graphql', {
+      const graphqlUri = import.meta.env.VITE_GRAPHQL_URI || 'http://localhost:3000/graphql'
+      console.log('🔗 Using GraphQL URI for multipart upload:', graphqlUri)
+      const response = await fetch(graphqlUri, {
         method: 'POST',
         headers,
         body: formData,
@@ -407,19 +409,20 @@ export function useCreateProductCategory() {
   const createCategory = async (categoryData: any): Promise<{ success: boolean; category?: Category; errors?: ApiError[] }> => {
     try {
       const result = await createCategoryMutation({
-        input: categoryData
+        name: categoryData.name,
+        position: categoryData.position
       })
       
-      if (result?.data?.createProductCategory?.errors?.length && result.data.createProductCategory.errors.length > 0) {
+      if (result?.data?.createCategory?.errors?.length && result.data.createCategory.errors.length > 0) {
         return {
           success: false,
-          errors: result.data.createProductCategory.errors
+          errors: result.data.createCategory.errors
         }
       }
       
       return {
         success: true,
-        category: result?.data?.createProductCategory?.category
+        category: result?.data?.createCategory?.category
       }
     } catch (err) {
       console.error('Error creating product category:', err)

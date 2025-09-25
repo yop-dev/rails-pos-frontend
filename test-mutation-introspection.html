@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphQL Mutation Introspection</title>
+</head>
+<body>
+    <h1>UpdateProduct Mutation Signature</h1>
+    <div id="results"></div>
+
+    <script>
+        async function introspectMutation() {
+            const query = `
+                query IntrospectionQuery {
+                    __schema {
+                        mutationType {
+                            fields {
+                                name
+                                args {
+                                    name
+                                    type {
+                                        name
+                                        kind
+                                        ofType {
+                                            name
+                                            kind
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            `;
+
+            try {
+                const response = await fetch('http://localhost:3000/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const result = await response.json();
+                
+                // Find updateProduct mutation
+                const mutations = result.data.__schema.mutationType.fields;
+                const updateProductMutation = mutations.find(mutation => 
+                    mutation.name === 'updateProduct'
+                );
+
+                console.log('UpdateProduct Mutation:', updateProductMutation);
+
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                if (updateProductMutation) {
+                    resultsDiv.innerHTML = `
+                        <h2>updateProduct mutation signature:</h2>
+                        <h3>Arguments:</h3>
+                        <ul>
+                            ${updateProductMutation.args.map(arg => {
+                                const typeName = arg.type.name || arg.type.ofType?.name || arg.type.kind;
+                                return `<li><strong>${arg.name}</strong>: ${typeName}${arg.type.kind === 'NON_NULL' ? '!' : ''}</li>`;
+                            }).join('')}
+                        </ul>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = '<p>updateProduct mutation not found!</p>';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        introspectMutation();
+    </script>
+</body>
+</html>

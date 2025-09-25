@@ -397,7 +397,7 @@ async function saveProduct() {
   try {
     const result = await updateProduct(editingProductId.value, {
       name: editForm.value.name,
-      price_cents: priceToCents(parseFloat(editForm.value.price))
+      priceCents: priceToCents(parseFloat(editForm.value.price))
     });
     
     if (result.success) {

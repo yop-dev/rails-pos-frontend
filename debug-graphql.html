@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphQL Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Rails POS Backend Debug</h1>
+    <p>Backend URL: <strong>https://rails-pos-backend.onrender.com</strong></p>
+    
+    <div id="status" class="test-section info">
+        Click the buttons below to test different endpoints...
+    </div>
+
+    <button onclick="testHealth()">1. Test Health Check</button>
+    <button onclick="testDebug()">2. Test Debug Endpoint</button>
+    <button onclick="testGraphQLSchema()">3. Test GraphQL Schema</button>
+    <button onclick="testSimpleQuery()">4. Test Simple GraphQL Query</button>
+    <button onclick="runAllTests()">Run All Tests</button>
+
+    <div id="results"></div>
+
+    <script>
+        const baseUrl = 'https://rails-pos-backend.onrender.com';
+        const resultsDiv = document.getElementById('results');
+        const statusDiv = document.getElementById('status');
+
+        function updateStatus(message) {
+            statusDiv.innerHTML = `<strong>Status:</strong> ${message}`;
+            console.log(message);
+        }
+
+        function addResult(title, success, data) {
+            const div = document.createElement('div');
+            div.className = `test-section ${success ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${success ? '✅' : '❌'} ${title}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testHealth() {
+            updateStatus('Testing health check endpoint...');
+            try {
+                const response = await fetch(`${baseUrl}/up`);
+                const text = await response.text();
+                addResult('Health Check', response.ok, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: text
+                });
+            } catch (error) {
+                addResult('Health Check', false, { error: error.message });
+            }
+        }
+
+        async function testDebug() {
+            updateStatus('Testing debug endpoint...');
+            try {
+                const response = await fetch(`${baseUrl}/debug`);
+                const data = await response.json();
+                addResult('Debug Endpoint', response.ok, {
+                    status: response.status,
+                    data: data
+                });
+            } catch (error) {
+                addResult('Debug Endpoint', false, { error: error.message });
+            }
+        }
+
+        async function testGraphQLSchema() {
+            updateStatus('Testing GraphQL schema introspection...');
+            try {
+                const response = await fetch(`${baseUrl}/graphql`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: '{ __schema { queryType { name } } }'
+                    })
+                });
+                
+                const data = await response.json();
+                addResult('GraphQL Schema', response.ok, {
+                    status: response.status,
+                    data: data
+                });
+            } catch (error) {
+                addResult('GraphQL Schema', false, { error: error.message });
+            }
+        }
+
+        async function testSimpleQuery() {
+            updateStatus('Testing simple GraphQL query...');
+            try {
+                const response = await fetch(`${baseUrl}/graphql`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: '{ __typename }'
+                    })
+                });
+                
+                const data = await response.json();
+                addResult('Simple GraphQL Query', response.ok, {
+                    status: response.status,
+                    data: data
+                });
+            } catch (error) {
+                addResult('Simple GraphQL Query', false, { error: error.message });
+            }
+        }
+
+        async function runAllTests() {
+            resultsDiv.innerHTML = '';
+            updateStatus('Running all tests...');
+            
+            await testHealth();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testDebug();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testGraphQLSchema();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testSimpleQuery();
+            
+            updateStatus('All tests completed!');
+        }
+    </script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useGlobalStore } from './stores/global'
 import { useAuthStore } from './stores/auth'
+import BackendStatus from './components/BackendStatus.vue'
 
 // Pinia stores
 const globalStore = useGlobalStore()
@@ -19,6 +20,9 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
+    <!-- Backend Status Indicator -->
+    <BackendStatus />
+    
     <!-- Main Router View - MainLayout handles the navigation -->
     <router-view />
     
