@@ -8,6 +8,9 @@ import { router } from './router'
 import { useAuthStore } from './stores/auth'
 import App from './App.vue'
 
+// Create Pinia instance first
+const pinia = createPinia()
+
 const app = createApp({
   setup() {
     // Provide Apollo Client to all components
@@ -17,19 +20,18 @@ const app = createApp({
 })
 
 // Install Pinia for state management
-const pinia = createPinia()
 app.use(pinia)
 
 // Install Vue Router
 app.use(router)
 
-// Initialize authentication before mounting
-// This ensures auth state is restored from localStorage before first navigation
+// Mount the app
+app.mount('#app')
+
+// Initialize authentication after app is mounted and Vue context is established
 const authStore = useAuthStore()
 authStore.initializeAuth().then(() => {
   console.log('Authentication initialized')
 }).catch((error) => {
   console.error('Failed to initialize authentication:', error)
 })
-
-app.mount('#app')

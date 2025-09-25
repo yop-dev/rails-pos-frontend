@@ -1,6 +1,7 @@
 import { ref } from 'vue'
-import { useMutation } from '@vue/apollo-composable'
+import { useMutation, provideApolloClient } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
+import { apolloClient } from '../apollo/client'
 import type { User, LoginCredentials, MutationResponse, ApiError } from '../types'
 
 // GraphQL Mutations
@@ -106,6 +107,9 @@ interface RefreshTokenResponse {
 
 // Composable for Authentication
 export function useAuth() {
+  // Provide Apollo client to ensure mutations work outside component context
+  provideApolloClient(apolloClient)
+  
   const { mutate: loginMutation, loading: loginLoading } = useMutation(LOGIN_MUTATION)
   const { mutate: logoutMutation, loading: logoutLoading } = useMutation(LOGOUT_MUTATION)
   const { mutate: refreshTokenMutation, loading: refreshLoading } = useMutation(REFRESH_TOKEN_MUTATION)
