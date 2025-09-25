@@ -88,9 +88,19 @@ export const useAuthStore = defineStore('auth', () => {
     const savedRefreshToken = getRefreshToken()
     const savedUser = getStoredUser()
     
+    console.log('AuthStore: Found stored data:', {
+      hasToken: !!savedToken,
+      hasRefreshToken: !!savedRefreshToken,
+      hasUser: !!savedUser,
+      tokenPreview: savedToken ? savedToken.substring(0, 20) + '...' : 'none'
+    })
+    
     if (savedToken && savedUser) {
       // Check if token is expired
-      if (isTokenExpired(savedToken)) {
+      const tokenExpired = isTokenExpired(savedToken)
+      console.log('AuthStore: Token expiration check:', { expired: tokenExpired })
+      
+      if (tokenExpired) {
         console.log('AuthStore: Token expired, attempting refresh...')
         
         if (savedRefreshToken) {
@@ -111,7 +121,11 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = savedToken
         refreshToken.value = savedRefreshToken
         
-        console.log('AuthStore: Auth restored from storage', { user: user.value.email })
+        console.log('AuthStore: Auth restored from storage', { 
+          user: user.value.email, 
+          role: user.value.role,
+          isLoggedIn: isLoggedIn.value 
+        })
       }
     } else {
       console.log('AuthStore: No stored authentication found')

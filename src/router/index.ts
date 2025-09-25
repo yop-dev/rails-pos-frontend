@@ -4,7 +4,12 @@ import { useAuthStore } from '../stores/auth'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: (to) => {
+      // If user is logged in, redirect to orders, otherwise to login
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn ? '/orders' : '/login'
+    },
+    meta: { requiresAuth: false } // Allow access to root for redirect logic
   },
   // Public routes
   {
@@ -93,15 +98,21 @@ export const router = createRouter({
 
 // Global navigation guards
 router.beforeEach(async (to, from, next) => {
+  console.log('Router: Navigating to', to.path, { requiresAuth: to.meta.requiresAuth })
   const authStore = useAuthStore()
   
   // Set page title
   document.title = to.meta.title as string || 'Rails POS'
   
-  // Initialize auth if not already done
-  if (!authStore.isLoggedIn && !authStore.isLoading) {
-    await authStore.initializeAuth()
-  }
+  // Always initialize auth on navigation (it's idempotent)
+  console.log('Router: Initializing auth before navigation check')
+  await authStore.initializeAuth()
+  
+  console.log('Router: Auth state after initialization:', {
+    isLoggedIn: authStore.isLoggedIn,
+    hasUser: !!authStore.user,
+    hasToken: !!authStore.token
+  })
   
   // Check if route requires authentication
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth !== false)
@@ -124,6 +135,7 @@ router.beforeEach(async (to, from, next) => {
   }
   
   // Allow navigation
+  console.log('Router: Navigation allowed to', to.path)
   next()
 })
 

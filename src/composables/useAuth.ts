@@ -4,10 +4,40 @@ import { gql } from '@apollo/client/core'
 import { apolloClient } from '../apollo/client'
 import type { User, LoginCredentials, MutationResponse, ApiError } from '../types'
 
+// Signup credentials interface
+interface SignupCredentials {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  role?: string
+}
+
 // GraphQL Mutations
 const LOGIN_MUTATION = gql`
   mutation Login($input: LoginInput!) {
     login(input: $input) {
+      user {
+        id
+        firstName
+        lastName
+        email
+        role
+        createdAt
+      }
+      token
+      refreshToken
+      errors {
+        message
+        field
+      }
+    }
+  }
+`
+
+const SIGNUP_MUTATION = gql`
+  mutation Signup($input: SignupInput!) {
+    signup(input: $input) {
       user {
         id
         firstName
@@ -105,12 +135,20 @@ interface RefreshTokenResponse {
   errors?: ApiError[]
 }
 
+interface SignupResponse {
+  user: User
+  token: string
+  refreshToken?: string
+  errors?: ApiError[]
+}
+
 // Composable for Authentication
 export function useAuth() {
   // Provide Apollo client to ensure mutations work outside component context
   provideApolloClient(apolloClient)
   
   const { mutate: loginMutation, loading: loginLoading } = useMutation(LOGIN_MUTATION)
+  const { mutate: signupMutation, loading: signupLoading } = useMutation(SIGNUP_MUTATION)
   const { mutate: logoutMutation, loading: logoutLoading } = useMutation(LOGOUT_MUTATION)
   const { mutate: refreshTokenMutation, loading: refreshLoading } = useMutation(REFRESH_TOKEN_MUTATION)
 
@@ -263,11 +301,85 @@ export function useAuth() {
     }
   }
 
+  // Signup function
+  const signup = async (credentials: SignupCredentials): Promise<MutationResponse<SignupResponse>> => {
+    try {
+      console.log('Attempting signup with credentials:', { email: credentials.email, firstName: credentials.firstName, lastName: credentials.lastName })
+      
+      const result = await signupMutation({
+        input: {
+          firstName: credentials.firstName,
+          lastName: credentials.lastName,
+          email: credentials.email,
+          password: credentials.password,
+          role: credentials.role || 'staff'
+        }
+      })
+
+      if (result?.data?.signup?.errors?.length > 0) {
+        return {
+          success: false,
+          errors: result.data.signup.errors,
+          message: result.data.signup.errors[0]?.message || 'Signup failed with validation errors'
+        }
+      }
+
+      if (result?.data?.signup?.user && result?.data?.signup?.token) {
+        const signupData: SignupResponse = {
+          user: result.data.signup.user,
+          token: result.data.signup.token,
+          refreshToken: result.data.signup.refreshToken
+        }
+
+        return {
+          success: true,
+          data: signupData,
+          message: 'Account created successfully'
+        }
+      }
+
+      return {
+        success: false,
+        errors: [{ message: 'Invalid response from server' }],
+        message: 'Signup failed - invalid server response'
+      }
+
+    } catch (error: any) {
+      console.error('Signup error:', error)
+      
+      // Handle GraphQL errors
+      if (error.graphQLErrors?.length > 0) {
+        return {
+          success: false,
+          errors: error.graphQLErrors.map((err: any) => ({ message: err.message })),
+          message: error.graphQLErrors[0].message
+        }
+      }
+
+      // Handle network errors
+      if (error.networkError) {
+        return {
+          success: false,
+          errors: [{ message: 'Network error - unable to connect to server' }],
+          message: 'Connection failed. Please check your internet connection.'
+        }
+      }
+
+      return {
+        success: false,
+        errors: [{ message: 'An unexpected error occurred during signup' }],
+        message: 'Signup failed. Please try again.'
+      }
+    }
+  }
+
   return {
     login,
+    signup,
     logout,
     refreshToken,
     loginLoading,
+    signupLoading,
     logoutLoading,
     refreshLoading
   }
@@ -411,11 +523,20 @@ export function useMockAuth() {
     }
   }
 
+  const signup = async (credentials: SignupCredentials): Promise<MutationResponse<SignupResponse>> => {
+    // For development, always use real GraphQL signup when possible
+    return { success: false, message: 'Mock signup not implemented - use real authentication', errors: [] }
+  }
+  
+  const signupLoading = ref(false)
+
   return {
     login,
+    signup,
     logout,
     refreshToken,
     loginLoading,
+    signupLoading,
     logoutLoading,
     refreshLoading
   }
@@ -423,14 +544,17 @@ export function useMockAuth() {
 
 // Export appropriate composable based on environment
 export default function useAuthentication() {
-  const isDevelopment = import.meta.env.DEV
+  // Use real authentication if we have a production GraphQL URI
+  const graphqlUri = import.meta.env.VITE_GRAPHQL_URI || ''
+  const isProduction = graphqlUri.includes('onrender.com') || import.meta.env.PROD
   
-  if (isDevelopment) {
+  if (isProduction) {
+    console.log('Using real GraphQL authentication for production')
+    return useAuth()
+  } else {
     console.log('Using mock authentication for development')
     return useMockAuth()
   }
-  
-  return useAuth()
 }
 
 // Helper function for token management
@@ -471,7 +595,13 @@ export function useTokenManager() {
 
   const isTokenExpired = (token: string): boolean => {
     try {
-      // Decode JWT token to check expiration
+      // Handle mock tokens (they don't expire for simplicity)
+      if (token.startsWith('mock-jwt-')) {
+        console.log('TokenManager: Mock token detected, treating as non-expired')
+        return false
+      }
+      
+      // Decode real JWT token to check expiration
       const payload = JSON.parse(atob(token.split('.')[1]))
       const currentTime = Math.floor(Date.now() / 1000)
       return payload.exp < currentTime
@@ -498,4 +628,4 @@ interface LoginInput {
   password: string
 }
 
-export type { LoginInput, LoginResponse, LogoutResponse, RefreshTokenResponse }
+export type { LoginInput, SignupCredentials, LoginResponse, SignupResponse, LogoutResponse, RefreshTokenResponse }

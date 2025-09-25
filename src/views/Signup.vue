@@ -202,10 +202,12 @@ import {
   EyeSlashIcon
 } from '@heroicons/vue/24/outline'
 import { useGlobalStore } from '../stores/global'
+import useAuthentication from '../composables/useAuth'
 
 // Router & Stores
 const router = useRouter()
 const globalStore = useGlobalStore()
+const { signup } = useAuthentication()
 
 // State
 const isLoading = ref(false)
@@ -293,15 +295,33 @@ async function handleSubmit() {
   isLoading.value = true
 
   try {
-    // TODO: Implement actual signup API call
-    // For now, just simulate the signup process
-    await simulateSignup()
+    // Split the full name into firstName and lastName
+    const nameParts = form.name.trim().split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || firstName // Use firstName as fallback if no last name
+    
+    // Call the real signup API through GraphQL
+    const result = await signup({
+      firstName: firstName,
+      lastName: lastName,
+      email: form.email.trim(),
+      password: form.password
+    })
 
-    // Show success message
-    globalStore.showSuccess('Account Created', 'Your account has been created successfully. Please sign in.')
-
-    // Redirect to login page
-    router.push('/login')
+    if (result.success) {
+      // Show success message
+      globalStore.showSuccess('Account Created', 'Your account has been created successfully. Please sign in.')
+      
+      // Redirect to login page
+      router.push('/login')
+    } else {
+      // Handle signup errors from the backend
+      if (result.errors && result.errors.length > 0) {
+        errorMessage.value = result.errors.map(e => e.message).join(', ')
+      } else {
+        errorMessage.value = 'Signup failed. Please try again.'
+      }
+    }
 
   } catch (error: any) {
     console.error('Signup error:', error)
@@ -311,26 +331,4 @@ async function handleSubmit() {
   }
 }
 
-async function simulateSignup() {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000))
-
-  // Simulate some validation (you would replace this with actual API call)
-  if (form.email.toLowerCase() === 'test@example.com') {
-    throw new Error('This email address is already registered. Please use a different email or sign in instead.')
-  }
-
-  // For now, just resolve successfully
-  // In a real app, you would make an API call here like:
-  // const response = await fetch('/api/signup', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({
-  //     name: form.name,
-  //     email: form.email,
-  //     password: form.password
-  //   })
-  // })
-  // if (!response.ok) throw new Error('Signup failed')
-}
 </script>
