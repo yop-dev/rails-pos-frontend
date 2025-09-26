@@ -153,7 +153,7 @@ const checkBackendStatus = async () => {
     console.log('🏥 Checking backend health:', `${backendUrl}/up`)
     
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 90000) // 90 second timeout for cold starts
     
     const response = await fetch(`${backendUrl}/up`, {
       signal: controller.signal
